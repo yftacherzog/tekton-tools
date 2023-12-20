@@ -18,7 +18,7 @@ spec:
       default: ""
     - name: WORKDIR
       type: string
-      default: /workdir
+      default: /tmp
       description: |
         Directory that will be used for storing temporary
         files produced by this task.
@@ -35,7 +35,7 @@ spec:
         #!/bin/bash
         set -ex
 
-        rpm_verifier.py \
+        rpm_verifier \
           --input "$(params.INPUT)" \
           --fail-unsigned "$(params.FAIL_UNSIGNED)" \
           --workdir "$(params.WORKDIR)"

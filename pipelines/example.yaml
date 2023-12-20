@@ -5,7 +5,7 @@ metadata:
 spec:
   params: [] # TBA     
   tasks:
-    - name: verify-signed-rpms
+    - name: generate-odcs-compose
       params: [] # TBA
       taskRef:
         resolver: git
