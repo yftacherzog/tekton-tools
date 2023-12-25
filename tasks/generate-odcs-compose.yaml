@@ -8,31 +8,47 @@ spec:
     - name: IMAGE
       type: string
       description: The image to use for this task
-      default: ""
+    - name: KT_PATH
+      type: string
+      description: path to mount keytab
+      default: /tmp/kt
+    - name: KRB_CACHE_PATH
+      description: path to krb cache
+      default: /tmp/krb5ccname
   workspaces:
     - name: workdir
       description: |
         Working directory that will be used for reading configuration files
         and writing the output
+    - name: keytab-secret
+      description: for storing keytab secret
+      mountPath: "$(params.KT_PATH)"
+    - name: krb-cache
+      description: location of krb cache
+      mountPath: "$(params.KRB_CACHE_PATH)"
   results:
     - name: repodir_path
       description: Directory to write the result .repo files.
   steps:
     - name: generate-odcs-compose
       image: "$(params.IMAGE)"
+      env:
+        - name: KRB5CCNAME
+          value: "$(params.KRB_CACHE_PATH)/krb5ccname"
+        - name: KRB5_CLIENT_KTNAME
+          value: "$(params.KT_PATH)/keytab"
+        - name: KRB5_TRACE
+          value: /dev/stdout
       script: |
         #!/bin/bash
         set -ex
 
         repodir_path="$(workspaces.workdir.path)/repos"
+
         cd "$(workspaces.workdir.path)"
 
-        odcs_compose_generator.py \
-          --compose-file-path \
-          "${repodir_path}/repofile.repo" \
-          --container-yml-path \
-          container.yaml \
-          --content-sets-yaml-path \
-          content_sets.yml
+        odcs_compose_generator \
+          --compose-input-yaml-path compose_inputs.yaml \
+          --compose-dir-path "${repodir_path}"
 
         echo "$repodir_path" > $(results.repodir_path.path)

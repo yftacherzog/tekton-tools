@@ -1,0 +1,154 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/redhat-appstudio/tekton-tools?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-event: '[pull_request]'
+    pipelinesascode.tekton.dev/on-target-branch: '[main]'
+    pipelinesascode.tekton.dev/task: tasks/generate-odcs-compose.yaml
+  labels:
+    appstudio.openshift.io/application: tekton-tools
+    appstudio.openshift.io/component: tekton-tools
+    pipelines.appstudio.openshift.io/type: build
+  name: generate-compose-pull-request
+  namespace: gbenhaim-tenant
+spec:
+  params:
+  - name: URL
+    value: '{{source_url}}'
+  - name: REVISION
+    value: '{{revision}}'
+  - name: SNAPSHOT
+    value: |
+      {
+        "application": "insights-content-template-renderer",
+        "components": [
+            {
+                "name": "insights-content-template-renderer",
+                "containerImage": "quay.io/redhat-user-workloads/gbenhaim-tenant/insights-content-template-renderer/insights-content-template-renderer@sha256:536b8213a355ca363d90703a2b5391463a2d5692b85d84a8842a229acd9d4ec1",
+                "source": {
+                    "git": {
+                        "url": "https://github.com/gbenhaim/insights-content-template-renderer",
+                        "revision": "6489e0a2b5848d35e65419eb6dc22558c7a7a71e"
+                    }
+                }
+            }
+        ],
+        "artifacts": {}
+      }
+  - name: APP_NAME
+    value: ccx-data-pipeline
+  - name: COMPONENTS
+    value: insights-content-template-renderer
+  - name: COMPONENTS_W_RESOURCES
+    value: insights-content-template-renderer
+  - name: COMPONENT_NAME
+    value: insights-content-template-renderer
+  - name: IQE_PLUGINS
+    value: ccx
+  - name: IQE_FILTER_EXPRESSION
+    value: test_plugin_accessible
+  - name: IQE_CJI_TIMEOUT
+    value: "30m"
+  workspaces:
+    - name: keytab-secret
+      secret:
+        secretName: rhtap-compose
+    - name: krb-cache
+      secret:
+        secretName: krbcache
+    - name: workdir
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Mi
+  pipelineSpec:
+    params:
+      - name: IMAGE
+        type: string
+        description: The image to use for this pipeline
+        default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:3e4b0033129ec597b6ceb1515c79b49afd71a4ee
+    workspaces:
+      - name: keytab-secret
+        description: for storing keytab secret
+      - name: workdir
+        description: for storing input yaml and output composes
+      - name: krb-cache
+        description: location of krb cache
+    tasks:
+      - name: prep-inputs
+        params:
+          - name: IMAGE
+            value: "$(params.IMAGE)"
+        workspaces:
+          - name: workdir
+        taskSpec:
+          params:
+            - name: IMAGE
+              type: string
+              description: The image to use for this task
+          workspaces:
+            - name: workdir
+              description: \
+                Working directory that will be used for reading configuration
+                files and writing the output
+          steps:
+            - name: generate-inputs
+              image: "$(params.IMAGE)"
+              script: |
+                #!/bin/bash
+                set -ex
+
+                tee -a "$(workspaces.workdir.path)"/compose_inputs.yaml << END
+                composes:
+                  - kind: ComposeSourceModule
+                    spec:
+                      modules:
+                        - squid:4:8090020231130092412:a75119d5
+                    additional_args: {}
+                END
+      - name: generate-odcs-compose
+        runAfter: [prep-inputs]
+        params:
+          - name: IMAGE
+            value: "$(params.IMAGE)"
+        workspaces:
+          - name: keytab-secret
+          - name: workdir
+          - name: krb-cache
+        taskRef:
+          name: generate-odcs-compose
+          kind: Task
+      - name: check-results
+        runAfter: [generate-odcs-compose]
+        params:
+          - name: IMAGE
+            value: "$(params.IMAGE)"
+        workspaces:
+          - name: workdir
+        taskSpec:
+          params:
+            - name: IMAGE
+              type: string
+              description: The image to use for this task
+          workspaces:
+            - name: workdir
+              description: \
+                Working directory that will be used for reading configuration
+                files and writing the output
+          steps:
+            - name: check-results
+              image: "$(params.IMAGE)"
+              script: |
+                #!/bin/bash
+                set -ex
+
+                cat $(workspaces.workdir.path)/repos/*
+                echo "TODO: verify output"
