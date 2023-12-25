@@ -9,6 +9,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-event: '[pull_request]'
     pipelinesascode.tekton.dev/on-target-branch: '[main]'
+    pipelinesascode.tekton.dev/task: tasks/sample-task.yaml
   labels:
     appstudio.openshift.io/application: tekton-tools
     appstudio.openshift.io/component: tekton-tools
@@ -56,10 +57,6 @@ spec:
   pipelineSpec:
     tasks:
     - name: sample-task
-      taskSpec:
-        steps:
-        - name: sample
-          image: registry.access.redhat.com/ubi9:latest
-          script: |
-            #!/bin/bash
-            echo "Success!"
+      taskRef:
+        name: sample
+        kind: Task
