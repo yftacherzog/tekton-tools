@@ -1,5 +1,5 @@
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: verify-signed-rpms
@@ -22,6 +22,9 @@ spec:
       description: |
         Directory that will be used for storing temporary
         files produced by this task.
+  results:
+    - name: verification-output
+      description: script output
   volumes:
     - name: workdir
       emptyDir: {}
@@ -34,8 +37,10 @@ spec:
       script: |
         #!/bin/bash
         set -ex
+        set -o pipefail
 
         rpm_verifier \
           --input "$(params.INPUT)" \
           --fail-unsigned "$(params.FAIL_UNSIGNED)" \
-          --workdir "$(params.WORKDIR)"
+          --workdir "$(params.WORKDIR)" 2>&1 \
+          | tee $(results.verification-output.path)
