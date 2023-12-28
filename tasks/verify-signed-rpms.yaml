@@ -40,7 +40,7 @@ spec:
         set -o pipefail
 
         rpm_verifier \
-          --input "$(params.INPUT)" \
+          --input '$(params.INPUT)' \
           --fail-unsigned "$(params.FAIL_UNSIGNED)" \
           --workdir "$(params.WORKDIR)" 2>&1 \
           | tee $(results.verification-output.path)
