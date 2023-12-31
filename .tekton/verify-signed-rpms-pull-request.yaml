@@ -54,22 +54,25 @@ spec:
     value: test_plugin_accessible
   - name: IQE_CJI_TIMEOUT
     value: "30m"
-  - name: IMAGE
-    value: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:72beb048597a0d19f64a3ef0433e0b6d2098164c
-  - name: INPUT 
-    value: quay.io/abiton1/ansible-automation-platform-2-next-eda-controller-rhel8:latest
-  - name: FAIL_UNSIGNED
-    value: False
   pipelineSpec:
     params:
     - name: IMAGE
       type: string
       description: The image to use for this pipeline
-      default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:3e4b0033129ec597b6ceb1515c79b49afd71a4ee
+      default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:6eea7e09df3e96d770117e5bc71e7a05191cf012
     - name: INPUT 
       type: string
+      default: |
+        {
+          "components": [
+              {
+                  "containerImage": "quay.io/abiton1/ansible-automation-platform-2-next-eda-controller-rhel8:latest"
+              }
+          ]
+        }
     - name: FAIL_UNSIGNED
       type: string
+      default: False
     tasks:
       - name: verify-signed-rpms
         params:
