@@ -17,43 +17,6 @@ metadata:
   name: generate-compose-pull-request
   namespace: gbenhaim-tenant
 spec:
-  params:
-  - name: URL
-    value: '{{source_url}}'
-  - name: REVISION
-    value: '{{revision}}'
-  - name: SNAPSHOT
-    value: |
-      {
-        "application": "insights-content-template-renderer",
-        "components": [
-            {
-                "name": "insights-content-template-renderer",
-                "containerImage": "quay.io/redhat-user-workloads/gbenhaim-tenant/insights-content-template-renderer/insights-content-template-renderer@sha256:536b8213a355ca363d90703a2b5391463a2d5692b85d84a8842a229acd9d4ec1",
-                "source": {
-                    "git": {
-                        "url": "https://github.com/gbenhaim/insights-content-template-renderer",
-                        "revision": "6489e0a2b5848d35e65419eb6dc22558c7a7a71e"
-                    }
-                }
-            }
-        ],
-        "artifacts": {}
-      }
-  - name: APP_NAME
-    value: ccx-data-pipeline
-  - name: COMPONENTS
-    value: insights-content-template-renderer
-  - name: COMPONENTS_W_RESOURCES
-    value: insights-content-template-renderer
-  - name: COMPONENT_NAME
-    value: insights-content-template-renderer
-  - name: IQE_PLUGINS
-    value: ccx
-  - name: IQE_FILTER_EXPRESSION
-    value: test_plugin_accessible
-  - name: IQE_CJI_TIMEOUT
-    value: "30m"
   workspaces:
     - name: keytab-secret
       secret:
