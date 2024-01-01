@@ -1,0 +1,6 @@
+composes:
+  - kind: ComposeSourcePulp
+    spec:
+      content_sets:
+        - rhel-8-for-x86_64-baseos-eus-rpms__8_DOT_6
+    additional_args: {}
