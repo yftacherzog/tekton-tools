@@ -15,6 +15,12 @@ spec:
     - name: KRB_CACHE_PATH
       description: path to krb cache
       default: /tmp/krb5ccname
+    - name: COMPOSE_INPUTS
+      description: relative path from workdir workspace to the compose inputs file
+      default: compose_inputs.yaml
+    - name: COMPOSE_OUTPUTS
+      description: relative path from workdir workspace to store compose output files
+      default: repos
   workspaces:
     - name: workdir
       description: |
@@ -37,18 +43,16 @@ spec:
           value: "$(params.KRB_CACHE_PATH)/krb5ccname"
         - name: KRB5_CLIENT_KTNAME
           value: "$(params.KT_PATH)/keytab"
-        - name: KRB5_TRACE
-          value: /dev/stdout
       script: |
         #!/bin/bash
         set -ex
 
-        repodir_path="$(workspaces.workdir.path)/repos"
+        repodir_path="$(workspaces.workdir.path)/$(params.COMPOSE_OUTPUTS)"
 
         cd "$(workspaces.workdir.path)"
 
         odcs_compose_generator \
-          --compose-input-yaml-path compose_inputs.yaml \
+          --compose-input-yaml-path $(params.COMPOSE_INPUTS) \
           --compose-dir-path "${repodir_path}"
 
         echo "$repodir_path" > $(results.repodir_path.path)

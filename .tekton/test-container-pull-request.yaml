@@ -9,7 +9,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main"
-    pipelinesascode.tekton.dev/task: "tasks/verify-signed-rpms.yaml"
+    pipelinesascode.tekton.dev/task: "[tasks/buildah/0.2/buildah.yaml, tasks/generate-odcs-compose.yaml, tasks/verify-signed-rpms.yaml]"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: tekton-tools
@@ -208,6 +208,26 @@ spec:
       workspaces:
       - name: source
         workspace: workspace
+    - name: generate-odcs-compose
+      runAfter:
+      - clone-repository
+      workspaces:
+      - name: workdir
+        workspace: workspace
+      - name: keytab-secret
+        workspace: keytab-secret
+      - name: krb-cache
+        workspace: krb-cache
+      taskRef:
+        name: generate-odcs-compose
+        kind: Task
+      params:
+        - name: IMAGE
+          value: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:cb1240de5cbda377508f5006dc69606cbf113134
+        - name: COMPOSE_INPUTS
+          value: source/compose_inputs.yaml
+        - name: COMPOSE_OUTPUTS
+          value: source/repos.d
     - name: build-container
       params:
       - name: IMAGE
@@ -226,15 +246,10 @@ spec:
         value: $(tasks.clone-repository.results.commit)
       runAfter:
       - prefetch-dependencies
+      - generate-odcs-compose
       taskRef:
-        params:
-        - name: name
-          value: buildah
-        - name: bundle
-          value: quay.io/redhat-appstudio-tekton-catalog/task-buildah:0.1@sha256:e45cf454d90b81d0e23107856c009083c279cbe07f9bc48538b1977d69713f35
-        - name: kind
-          value: task
-        resolver: bundles
+        name: buildah
+        kind: Task
       when:
       - input: $(tasks.init.results.build)
         operator: in
@@ -325,4 +340,10 @@ spec:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
+  - name: keytab-secret
+    secret:
+      secretName: rhtap-compose
+  - name: krb-cache
+    secret:
+      secretName: krbcache
 status: {}

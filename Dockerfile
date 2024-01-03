@@ -1,3 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.2-750.1697625013
 
-RUN rm -f /etc/yum.repos.d/*
+USER 0
+RUN microdnf install -y zsh
