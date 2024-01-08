@@ -9,7 +9,12 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main"
-    pipelinesascode.tekton.dev/task: "[tasks/buildah/0.2/buildah.yaml, tasks/generate-odcs-compose.yaml, tasks/verify-signed-rpms.yaml]"
+    pipelinesascode.tekton.dev/task: >-
+      [
+      tasks/buildah/0.2/buildah.yaml,
+      tasks/generate-odcs-compose/0.1/generate-odcs-compose.yaml,
+      tasks/verify-signed-rpms/0.1/verify-signed-rpms.yaml
+      ]
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: tekton-tools

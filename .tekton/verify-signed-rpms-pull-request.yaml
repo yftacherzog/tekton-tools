@@ -9,7 +9,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-event: '[pull_request]'
     pipelinesascode.tekton.dev/on-target-branch: '[main]'
-    pipelinesascode.tekton.dev/task: tasks/verify-signed-rpms.yaml
+    pipelinesascode.tekton.dev/task: tasks/verify-signed-rpms/0.1/verify-signed-rpms.yaml
   labels:
     appstudio.openshift.io/application: tekton-tools
     appstudio.openshift.io/component: tekton-tools
