@@ -13,6 +13,7 @@ metadata:
     appstudio.openshift.io/application: tekton-tools
     appstudio.openshift.io/component: test-container
     pipelines.appstudio.openshift.io/type: build
+    pipelinesascode.tekton.dev/task: tasks/create-pull-request.yaml
   name: test-container-on-push
   namespace: gbenhaim-tenant
 spec:
@@ -374,6 +375,31 @@ spec:
         operator: in
         values:
         - "false"
+    - name: sync-tasks
+      runAfter:
+      - clone-repository
+      workspaces:
+      - name: artifacts
+        workspace: workspace
+      taskRef:
+        name: create-pull-request
+        kind: Task
+      params:
+        - name: ORIGIN_REPO
+          value: $(params.git-url)
+        - name: REVISION
+          value: $(params.revision)
+        - name: ARTIFACTS_PATH
+          value: /workspace/artifacts/source/tasks
+        - name: TARGET_GH_REPO
+          value: redhat-appstudio/build-definitions
+        - name: PR_URL
+          value: $(params.pr-url)
+        - name: SCRIPT
+          value: |
+            set -x
+            rsync -a --delete $ARTIFACTS_PATH/generate-odcs-compose ./task
+            rsync -a --delete $ARTIFACTS_PATH/verify-signed-rpms ./task
     workspaces:
     - name: workspace
     - name: git-auth
