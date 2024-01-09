@@ -23,8 +23,8 @@ spec:
         Directory that will be used for storing temporary
         files produced by this task.
   results:
-    - name: verification-output
-      description: script output
+    - name: TEST_OUTPUT
+      description: Tekton task test output.
   volumes:
     - name: workdir
       emptyDir: {}
@@ -42,5 +42,20 @@ spec:
         rpm_verifier \
           --input '$(params.INPUT)' \
           --fail-unsigned "$(params.FAIL_UNSIGNED)" \
-          --workdir "$(params.WORKDIR)" 2>&1 \
-          | tee $(results.verification-output.path)
+          --workdir "$(params.WORKDIR)" \
+          --status-path "$(params.WORKDIR)"/status
+    - name: output-results
+      image: quay.io/redhat-appstudio/hacbs-test:v1.1.8@sha256:8de0ec0875c7c6a41e0208b0030090992169f501166154edaded8a4f6121b164
+      volumeMounts:
+        - name: workdir
+          mountPath: "$(params.WORKDIR)"
+      script: |
+        #!/bin/bash
+        set -ex
+
+        source /utils.sh
+        note="Task $(context.task.name) completed: Refer to Tekton task output for unsigned rpms"
+        status=`cat "$(params.WORKDIR)"/status`
+        TEST_OUTPUT=$(make_result_json -r "$status" -t "$note")
+        echo "${TEST_OUTPUT}" | tee $(results.TEST_OUTPUT.path)
+        

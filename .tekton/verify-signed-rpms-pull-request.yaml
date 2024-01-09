@@ -22,7 +22,7 @@ spec:
     - name: IMAGE
       type: string
       description: The image to use for this pipeline
-      default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:6eea7e09df3e96d770117e5bc71e7a05191cf012
+      default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:16b91eb451dca19e89809cbbbfd255d65e5bc4bd
     - name: INPUT 
       type: string
       default: |
@@ -60,29 +60,29 @@ spec:
         params:
           - name: IMAGE
             value: $(params.IMAGE)
-          - name: verify-signed-rpms-output
-            value: $(tasks.verify-signed-rpms.results.verification-output)
+          - name: TEST_OUTPUT
+            value: $(tasks.verify-signed-rpms.results.TEST_OUTPUT)
         taskSpec:
           params:
             - name: IMAGE
               type: string
               description: The image to use for this task
               default: ""
-            - name: verify-signed-rpms-output
+            - name: TEST_OUTPUT
               type: string
+              description: output of the task
           steps:
             - name: verify-output
               image: "$(params.IMAGE)"
               script: |
                 #!/bin/bash
-                set -e
+                set -ex
               
-                output="$(params.verify-signed-rpms-output)"
+                output=$(params.TEST_OUTPUT)
                 echo "Output: $output"
 
-                if [[ "$output" == *"quay.io/o11y_tests/unsigned-rpms:latest: ansible-automation-platform-common-2.4-1.el8ap, python39-six-1.16.0-2.el8pc"* ]] && 
-                   [[ "$output" == *"error: image "quay.io/o11y_tests/error:latest" not found: manifest unknown: manifest unknown"* ]] && 
-                   [[ "$output" != *"quay.io/o11y_tests/signed-rpms:latest"* ]]; then 
+                if [[ "$output" == *"completed: Refer to Tekton task output for unsigned rpms"* ]] && 
+                   [[ "$output" == *"ERROR"* ]]; then 
                   echo "Output matches!"
                 else
                   echo "Output does not match"

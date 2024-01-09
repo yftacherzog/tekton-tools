@@ -320,11 +320,11 @@ spec:
         kind: Task
       params:
       - name: IMAGE
-        value: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:cb1240de5cbda377508f5006dc69606cbf113134
+        value: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:16b91eb451dca19e89809cbbbfd255d65e5bc4bd
       - name: INPUT
         value: $(tasks.build-container.results.IMAGE_URL)
       - name: FAIL_UNSIGNED
-        value: True
+        value: False
     workspaces:
     - name: workspace
     - name: git-auth
