@@ -29,7 +29,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: pr-url
-    value: '{{body.pull_request.html_url}}'
+    value: '{{body.head_commit.url}}'
   pipelineSpec:
     params:
     - description: Source Repository URL
