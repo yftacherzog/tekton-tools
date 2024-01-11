@@ -23,45 +23,42 @@ spec:
       type: string
       description: The image to use for this pipeline
       default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:16b91eb451dca19e89809cbbbfd255d65e5bc4bd
-    - name: INPUT 
-      type: string
-      default: |
-        {
-          "components": [
-              {
-                  "containerImage": "quay.io/o11y_tests/unsigned-rpms:latest"
-              },
-              {
-                  "containerImage": "quay.io/o11y_tests/signed-rpms:latest"
-              },
-              {
-                  "containerImage": "quay.io/o11y_tests/error:latest"
-              }             
-          ]
-        }
     - name: FAIL_UNSIGNED
       type: string
       default: False
     tasks:
-      - name: verify-signed-rpms
+      - name: verify-signed-rpms-error
         params:
         - name: IMAGE
           value: $(params.IMAGE)
         - name: INPUT
-          value: $(params.INPUT)
+          value: |
+            {
+              "components": [
+                  {
+                      "containerImage": "quay.io/o11y_tests/unsigned-rpms:latest"
+                  },
+                  {
+                      "containerImage": "quay.io/o11y_tests/signed-rpms:latest"
+                  },
+                  {
+                      "containerImage": "quay.io/o11y_tests/error:latest"
+                  }             
+              ]
+            }
         - name: FAIL_UNSIGNED
           value: $(params.FAIL_UNSIGNED)
         taskRef:
           name: verify-signed-rpms
           kind: Task
-      - name: verify-output
+      - name: verify-output-error
         runAfter:
-          - verify-signed-rpms
+          - verify-signed-rpms-error
         params:
           - name: IMAGE
             value: $(params.IMAGE)
           - name: TEST_OUTPUT
-            value: $(tasks.verify-signed-rpms.results.TEST_OUTPUT)
+            value: $(tasks.verify-signed-rpms-error.results.TEST_OUTPUT)
         taskSpec:
           params:
             - name: IMAGE
@@ -83,6 +80,58 @@ spec:
 
                 if [[ "$output" == *"completed: Refer to Tekton task output for unsigned rpms"* ]] && 
                    [[ "$output" == *"ERROR"* ]]; then 
+                  echo "Output matches!"
+                else
+                  echo "Output does not match"
+                  exit 1
+                fi
+      - name: verify-signed-rpms-success
+        params:
+        - name: IMAGE
+          value: $(params.IMAGE)
+        - name: INPUT
+          value: |
+            {
+              "components": [
+                  {
+                      "containerImage": "quay.io/o11y_tests/signed-rpms:latest"
+                  }            
+              ]
+            }
+        - name: FAIL_UNSIGNED
+          value: $(params.FAIL_UNSIGNED)
+        taskRef:
+          name: verify-signed-rpms
+          kind: Task
+      - name: verify-output-success
+        runAfter:
+          - verify-signed-rpms-success
+        params:
+          - name: IMAGE
+            value: $(params.IMAGE)
+          - name: TEST_OUTPUT
+            value: $(tasks.verify-signed-rpms-success.results.TEST_OUTPUT)
+        taskSpec:
+          params:
+            - name: IMAGE
+              type: string
+              description: The image to use for this task
+              default: ""
+            - name: TEST_OUTPUT
+              type: string
+              description: output of the task
+          steps:
+            - name: verify-output
+              image: "$(params.IMAGE)"
+              script: |
+                #!/bin/bash
+                set -ex
+              
+                output=$(params.TEST_OUTPUT)
+                echo "Output: $output"
+
+                if [[ "$output" == *"completed: Refer to Tekton task output for unsigned rpms"* ]] && 
+                   [[ "$output" == *"SUCCESS"* ]]; then 
                   echo "Output matches!"
                 else
                   echo "Output does not match"
