@@ -34,27 +34,37 @@ spec:
       volumeMounts:
         - name: workdir
           mountPath: "$(params.WORKDIR)"
+      env:
+        - name: INPUT
+          value: "$(params.INPUT)"
+        - name: FAIL_UNSIGNED
+          value: "$(params.FAIL_UNSIGNED)"
+        - name: WORKDIR
+          value: "$(params.WORKDIR)"
       script: |
         #!/bin/bash
         set -ex
         set -o pipefail
 
         rpm_verifier \
-          --input '$(params.INPUT)' \
-          --fail-unsigned "$(params.FAIL_UNSIGNED)" \
-          --workdir "$(params.WORKDIR)" \
-          --status-path "$(params.WORKDIR)"/status
+          --input '${INPUT}' \
+          --fail-unsigned "${FAIL_UNSIGNED}" \
+          --workdir "${WORKDIR}" \
+          --status-path "${WORKDIR}"/status
     - name: output-results
       image: quay.io/redhat-appstudio/hacbs-test:v1.1.8@sha256:8de0ec0875c7c6a41e0208b0030090992169f501166154edaded8a4f6121b164
       volumeMounts:
         - name: workdir
           mountPath: "$(params.WORKDIR)"
+      env:
+        - name: WORKDIR
+          value: "$(params.WORKDIR)"
       script: |
         #!/bin/bash
         set -ex
 
         source /utils.sh
         note="Task $(context.task.name) completed: Refer to Tekton task output for unsigned rpms"
-        status=`cat "$(params.WORKDIR)"/status`
+        status=`cat "${WORKDIR}"/status`
         TEST_OUTPUT=$(make_result_json -r "$status" -t "$note")
         echo "${TEST_OUTPUT}" | tee $(results.TEST_OUTPUT.path)

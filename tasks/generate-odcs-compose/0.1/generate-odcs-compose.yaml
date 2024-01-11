@@ -43,6 +43,8 @@ spec:
           value: "$(params.KRB_CACHE_PATH)/krb5ccname"
         - name: KRB5_CLIENT_KTNAME
           value: "$(params.KT_PATH)/keytab"
+        - name: COMPOSE_INPUTS
+          value: "$(params.COMPOSE_INPUTS)"
       script: |
         #!/bin/bash
         set -ex
@@ -52,7 +54,7 @@ spec:
         cd "$(workspaces.workdir.path)"
 
         odcs_compose_generator \
-          --compose-input-yaml-path $(params.COMPOSE_INPUTS) \
+          --compose-input-yaml-path "${COMPOSE_INPUTS}" \
           --compose-dir-path "${repodir_path}"
 
         echo "$repodir_path" > $(results.repodir_path.path)
