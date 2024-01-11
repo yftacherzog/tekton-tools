@@ -1,0 +1,85 @@
+---
+kind: CronJob
+apiVersion: batch/v1
+metadata:
+  name: krb-cache-refresher
+spec:
+  schedule: 0 */8 * * *
+  concurrencyPolicy: Replace
+  suspend: false
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: krb-cache-refresher
+          containers:
+            - resources:
+                limits:
+                  cpu: 100m
+                  memory: 500Mi
+                requests:
+                  cpu: 100m
+                  memory: 500Mi
+              name: kinit
+              command:
+                - /bin/bash
+                - '-c'
+                - >-
+                  echo "Refreshing Kerberos cache..." && kinit rhtap-compose -k
+                  -t ${KRB5_CLIENT_KTNAME} && oc create secret generic -o yaml
+                  --dry-run=client --from-file ${KRB5CCNAME} krbcache >
+                  krbcache.yaml && oc apply -f krbcache.yaml && echo "Done"
+              env:
+                - name: KRB5CCNAME
+                  value: /tmp/krb5ccname
+                - name: KRB5_CLIENT_KTNAME
+                  value: /tmp/kt/keytab
+              securityContext:
+                runAsNonRoot: true
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+                - name: rhtap-compose-volume
+                  readOnly: true
+                  mountPath: /tmp/kt
+              image: >-
+                quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:3e4b0033129ec597b6ceb1515c79b49afd71a4ee
+          serviceAccount: krb-cache-refresher
+          volumes:
+            - name: rhtap-compose-volume
+              secret:
+                secretName: rhtap-compose
+                defaultMode: 384
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: krb-cache-refresher
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: krb-cache-refresher
+rules:
+  - verbs:
+      - get
+      - create
+      - patch
+    apiGroups:
+      - ''
+    resources:
+      - secrets
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: krb-cache-refresher
+subjects:
+  - kind: ServiceAccount
+    name: krb-cache-refresher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: krb-cache-refresher
