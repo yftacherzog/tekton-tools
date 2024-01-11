@@ -58,4 +58,3 @@ spec:
         status=`cat "$(params.WORKDIR)"/status`
         TEST_OUTPUT=$(make_result_json -r "$status" -t "$note")
         echo "${TEST_OUTPUT}" | tee $(results.TEST_OUTPUT.path)
-        
