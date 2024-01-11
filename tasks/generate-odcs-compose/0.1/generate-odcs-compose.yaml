@@ -45,11 +45,13 @@ spec:
           value: "$(params.KT_PATH)/keytab"
         - name: COMPOSE_INPUTS
           value: "$(params.COMPOSE_INPUTS)"
+        - name: COMPOSE_OUTPUTS
+          value: "$(params.COMPOSE_OUTPUTS)"
       script: |
         #!/bin/bash
         set -ex
 
-        repodir_path="$(workspaces.workdir.path)/$(params.COMPOSE_OUTPUTS)"
+        repodir_path="$(workspaces.workdir.path)/${COMPOSE_OUTPUTS}"
 
         cd "$(workspaces.workdir.path)"
 
