@@ -228,7 +228,7 @@ spec:
         kind: Task
       params:
         - name: IMAGE
-          value: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:cb1240de5cbda377508f5006dc69606cbf113134
+          value: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:1126d8b701fe1448fe77e98f1906fd685fdbe3d4
         - name: COMPOSE_INPUTS
           value: source/compose_inputs.yaml
         - name: COMPOSE_OUTPUTS
@@ -320,7 +320,7 @@ spec:
         kind: Task
       params:
       - name: IMAGE
-        value: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:16b91eb451dca19e89809cbbbfd255d65e5bc4bd
+        value: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:1126d8b701fe1448fe77e98f1906fd685fdbe3d4
       - name: INPUT
         value: $(tasks.build-container.results.IMAGE_URL)
       - name: FAIL_UNSIGNED
