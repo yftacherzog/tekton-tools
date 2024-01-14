@@ -37,7 +37,7 @@ spec:
       - name: IMAGE
         type: string
         description: The image to use for this pipeline
-        default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:3e4b0033129ec597b6ceb1515c79b49afd71a4ee
+        default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:1126d8b701fe1448fe77e98f1906fd685fdbe3d4
     workspaces:
       - name: keytab-secret
         description: for storing keytab secret
