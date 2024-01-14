@@ -232,7 +232,7 @@ spec:
         - name: COMPOSE_INPUTS
           value: source/compose_inputs.yaml
         - name: COMPOSE_OUTPUTS
-          value: source/repos.d
+          value: fetched.repos.d
     - name: build-container
       params:
       - name: IMAGE
