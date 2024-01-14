@@ -64,7 +64,12 @@ spec:
         set -ex
 
         source /utils.sh
-        note="Task $(context.task.name) completed: Refer to Tekton task output for unsigned rpms"
         status=`cat "${WORKDIR}"/status`
+        if [ "$status" == "ERROR" ]; then
+          note="Task $(context.task.name) completed: Not all RPMs were confirmed to be signed. Refer to Tekton task output for details"
+        else
+          note="Task $(context.task.name) completed: No unsigned RPMs"
+        fi
+        
         TEST_OUTPUT=$(make_result_json -r "$status" -t "$note")
         echo "${TEST_OUTPUT}" | tee $(results.TEST_OUTPUT.path)

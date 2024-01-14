@@ -78,7 +78,7 @@ spec:
                 output=$(params.TEST_OUTPUT)
                 echo "Output: $output"
 
-                if [[ "$output" == *"completed: Refer to Tekton task output for unsigned rpms"* ]] && 
+                if [[ "$output" == *"completed: Not all RPMs were confirmed to be signed. Refer to Tekton task output for details"* ]] && 
                    [[ "$output" == *"ERROR"* ]]; then 
                   echo "Output matches!"
                 else
@@ -130,7 +130,7 @@ spec:
                 output=$(params.TEST_OUTPUT)
                 echo "Output: $output"
 
-                if [[ "$output" == *"completed: Refer to Tekton task output for unsigned rpms"* ]] && 
+                if [[ "$output" == *"completed: No unsigned RPMs"* ]] && 
                    [[ "$output" == *"SUCCESS"* ]]; then 
                   echo "Output matches!"
                 else
