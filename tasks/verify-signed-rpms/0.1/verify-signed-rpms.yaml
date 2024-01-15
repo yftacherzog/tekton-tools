@@ -70,6 +70,6 @@ spec:
         else
           note="Task $(context.task.name) completed: No unsigned RPMs"
         fi
-        
+
         TEST_OUTPUT=$(make_result_json -r "$status" -t "$note")
         echo "${TEST_OUTPUT}" | tee $(results.TEST_OUTPUT.path)
