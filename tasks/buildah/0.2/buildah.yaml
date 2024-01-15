@@ -58,7 +58,7 @@ spec:
     type: string
     default: ""
   - name: YUM_REPOS_D_SRC
-    description: Path in the repository in which yum repodir files are stored 
+    description: Path in the repository in which yum repodir files are stored
     default: repos.d
   - name: YUM_REPOS_D_FETCHED
     description: Path in source workspace where dynamically-fetched repos are present

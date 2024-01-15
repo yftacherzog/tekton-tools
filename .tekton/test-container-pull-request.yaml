@@ -324,7 +324,7 @@ spec:
       - name: INPUT
         value: $(tasks.build-container.results.IMAGE_URL)
       - name: FAIL_UNSIGNED
-        value: False
+        value: false
     workspaces:
     - name: workspace
     - name: git-auth

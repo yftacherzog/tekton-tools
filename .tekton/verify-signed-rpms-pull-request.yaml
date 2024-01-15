@@ -25,7 +25,7 @@ spec:
       default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:1126d8b701fe1448fe77e98f1906fd685fdbe3d4
     - name: FAIL_UNSIGNED
       type: string
-      default: False
+      default: false
     tasks:
       - name: verify-signed-rpms-error
         params:
@@ -43,7 +43,7 @@ spec:
                   },
                   {
                       "containerImage": "quay.io/o11y_tests/error:latest"
-                  }             
+                  }
               ]
             }
         - name: FAIL_UNSIGNED
@@ -74,12 +74,12 @@ spec:
               script: |
                 #!/bin/bash
                 set -ex
-              
+
                 output=$(params.TEST_OUTPUT)
                 echo "Output: $output"
 
-                if [[ "$output" == *"completed: Not all RPMs were confirmed to be signed. Refer to Tekton task output for details"* ]] && 
-                   [[ "$output" == *"ERROR"* ]]; then 
+                if [[ "$output" == *"completed: Not all RPMs were confirmed to be signed. Refer to Tekton task output for details"* ]] &&
+                   [[ "$output" == *"ERROR"* ]]; then
                   echo "Output matches!"
                 else
                   echo "Output does not match"
@@ -95,7 +95,7 @@ spec:
               "components": [
                   {
                       "containerImage": "quay.io/o11y_tests/signed-rpms:latest"
-                  }            
+                  }
               ]
             }
         - name: FAIL_UNSIGNED
@@ -126,12 +126,12 @@ spec:
               script: |
                 #!/bin/bash
                 set -ex
-              
+
                 output=$(params.TEST_OUTPUT)
                 echo "Output: $output"
 
-                if [[ "$output" == *"completed: No unsigned RPMs"* ]] && 
-                   [[ "$output" == *"SUCCESS"* ]]; then 
+                if [[ "$output" == *"completed: No unsigned RPMs"* ]] &&
+                   [[ "$output" == *"SUCCESS"* ]]; then
                   echo "Output matches!"
                 else
                   echo "Output does not match"
