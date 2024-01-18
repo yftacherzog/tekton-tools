@@ -22,7 +22,7 @@ spec:
     - name: IMAGE
       type: string
       description: The image to use for this pipeline
-      default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:1126d8b701fe1448fe77e98f1906fd685fdbe3d4
+      default: quay.io/redhat-user-workloads/rhtap-o11y-tenant/tools/tools:3e4c9a30e734aa34f57a084633ccfbb73d466fbd
     - name: FAIL_UNSIGNED
       type: string
       default: false
