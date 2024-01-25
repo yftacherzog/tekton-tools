@@ -213,6 +213,23 @@ spec:
       workspaces:
       - name: source
         workspace: workspace
+    - name: yaml-lint
+      workspaces:
+        - name: workspace
+          workspace: workspace
+      runAfter:
+        - clone-repository
+      taskSpec:
+        workspaces:
+          - name: workspace
+        steps:
+          - name: yaml-lint
+            image: registry.access.redhat.com/ubi9/python-39:latest
+            workingDir: $(workspaces.workspace.path)/source
+            script: |
+              python3 -m pip install pipenv
+              python3 -m pipenv sync --dev
+              python3 -m pipenv run yamllint . && echo "lint_yamls: SUCCESS"
     - name: generate-odcs-compose
       runAfter:
       - clone-repository
