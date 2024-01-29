@@ -36,6 +36,8 @@ spec:
     value: .
   - name: revision
     value: '{{revision}}'
+  - name: target-branch
+    value: '{{target_branch}}'
   pipelineSpec:
     finally:
     - name: show-sbom
@@ -77,6 +79,9 @@ spec:
     - default: ""
       description: Revision of the Source Repository
       name: revision
+      type: string
+    - default: ""
+      name: target-branch
       type: string
     - description: Fully Qualified Output Image
       name: output-image
@@ -230,6 +235,42 @@ spec:
               python3 -m pip install pipenv
               python3 -m pipenv sync --dev
               python3 -m pipenv run yamllint . && echo "lint_yamls: SUCCESS"
+    - name: run-gitlint
+      workspaces:
+        - name: workspace
+          workspace: workspace
+        - name: basic-auth
+          workspace: git-auth
+      runAfter:
+        - clone-repository
+      taskSpec:
+        workspaces:
+          - name: workspace
+          - name: basic-auth
+        steps:
+          - name: run-gitlint
+            env:
+              - name: WORKSPACE_BASIC_AUTH_DIRECTORY_PATH
+                value: $(workspaces.basic-auth.path)
+            image: registry.access.redhat.com/ubi9/python-39:latest
+            workingDir: $(workspaces.workspace.path)/source
+            script: |
+              #!/bin/bash -ex
+
+              if [ -f "${WORKSPACE_BASIC_AUTH_DIRECTORY_PATH}/.git-credentials" ] && [ -f "${WORKSPACE_BASIC_AUTH_DIRECTORY_PATH}/.gitconfig" ]; then
+                cp "${WORKSPACE_BASIC_AUTH_DIRECTORY_PATH}/.git-credentials" "$HOME/.git-credentials"
+                cp "${WORKSPACE_BASIC_AUTH_DIRECTORY_PATH}/.gitconfig" "$HOME/.gitconfig"
+              else
+                echo "Unknown basic-auth workspace format"
+                exit 1
+              fi
+              chmod 400 "$HOME/.git-credentials"
+              chmod 400 "$HOME/.gitconfig"
+
+              python -m pip install gitlint
+              git config --global --add safe.directory '*'
+              git fetch origin "$(params.target-branch)"
+              gitlint --fail-without-commits --commits "origin/$(params.target-branch)..HEAD"
     - name: generate-odcs-compose
       runAfter:
       - clone-repository
@@ -345,7 +386,6 @@ spec:
     workspaces:
     - name: workspace
     - name: git-auth
-      optional: true
   taskRunTemplate: {}
   workspaces:
   - name: workspace
