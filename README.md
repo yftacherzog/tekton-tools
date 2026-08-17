@@ -3,6 +3,21 @@
 Tekton tasks and pipeline used by AppStudio.
 
 
+## Installation
+
+Requires a cluster with the Tekton Task CRD and `kubectl`. Apply the actively
+maintained task:
+
+```bash
+kubectl apply -f tasks/rpms-signature-scan/0.2/rpms-signature-scan.yaml -n <namespace>
+```
+
+## Usage
+
+Task parameters and results are documented in each version directory's `README.md`
+(for example [`tasks/rpms-signature-scan/0.2/README.md`](tasks/rpms-signature-scan/0.2/README.md)).
+How CI runs the task against sample images: [AGENTS.md](AGENTS.md) (CI / Testing) and `.tekton/rpms-signature-scan-tests-pull-request.yaml`.
+
 ## Kerberos keytab
 
 Generating composes with ODCS requires a Kerberos keytab for authentication. The
@@ -34,3 +49,12 @@ the tasks should run.
 
 To create the cronjob and its required service account, role and role binding, apply
 the [configs](config/cache-cronjob.yaml) to the namespace where the task needs to run.
+
+## Development
+
+See [AGENTS.md](AGENTS.md) for linting, CI, and how to add or update tasks.
+
+```bash
+pipenv sync --dev
+pipenv run yamllint .
+```
