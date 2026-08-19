@@ -4,7 +4,7 @@ kind: Task
 metadata:
   name: rpms-signature-scan
   labels:
-    app.kubernetes.io/version: "0.2.1"
+    app.kubernetes.io/version: "0.2.2"
 spec:
   description: |-
     Scans RPMs in an image and provide information about RPMs signatures.
@@ -36,6 +36,8 @@ spec:
       description: Information about signed and unsigned RPMs
     - name: IMAGES_PROCESSED
       description: Images processed in the task.
+    - name: SCAN_LOG
+      description: Diagnostic log from the RPM scan (e.g. selective extraction info).
   volumes:
     - name: workdir
       emptyDir: {}
@@ -48,7 +50,7 @@ spec:
         optional: true
   steps:
     - name: rpms-signature-scan
-      image: quay.io/konflux-ci/tools@sha256:f5be9c883c6d7e54cf861180a962aa8fd030ec1bcac793592f241a1dcafd1280
+      image: quay.io/konflux-ci/tools@sha256:9ff6728800cea9a03ce5449a2ec7afb75a8d292a043adab0afa3c7cfa91a99d8
       computeResources:
         limits:
           memory: 256Mi
@@ -79,6 +81,7 @@ spec:
           --image-url "${IMAGE_URL}" \
           --image-digest "${IMAGE_DIGEST}" \
           --workdir "${WORKDIR}" \
+          2> >(tee "${WORKDIR}/stderr" >&2)
     - name: output-results
       image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
       computeResources:
@@ -114,3 +117,9 @@ spec:
         echo "${TEST_OUTPUT}" | tee "$(results.TEST_OUTPUT.path)"
         echo "${rpms_data}" | tee "$(results.RPMS_DATA.path)"
         echo "${images_processed}" | tee "$(results.IMAGES_PROCESSED.path)"
+
+        if [ -f "${WORKDIR}/stderr" ]; then
+          head -c 4000 "${WORKDIR}/stderr" | tee "$(results.SCAN_LOG.path)"
+        else
+          echo "" > "$(results.SCAN_LOG.path)"
+        fi

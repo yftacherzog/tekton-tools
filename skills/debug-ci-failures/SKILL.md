@@ -57,7 +57,7 @@ a failed status.
 
 ## Understanding Test Results
 
-The `rpms-signature-scan` task produces three results:
+The `rpms-signature-scan` task produces four results:
 
 ### TEST_OUTPUT
 
@@ -98,6 +98,17 @@ digests: [sha256:3ec7a3cd38db...]
 ```
 
 For image indexes, multiple digests appear (child manifests are resolved).
+
+### SCAN_LOG
+
+Diagnostic log captured from `rpm_verifier` stderr. For ModelCar (OLOT) images,
+contains lines like:
+```
+Selective extraction enabled for <image> (skipping 1 of 7 layers)
+```
+
+For regular images this result is empty. If selective extraction is expected but
+missing, verify the tools image includes the ModelCar support (commit `0e3925a`+).
 
 ## Task Failures: rpms-signature-scan
 

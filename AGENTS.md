@@ -44,8 +44,8 @@ Tasks follow `<name>/<major>.<minor>/` directory layout:
 CI runs via Konflux Pipelines-as-Code (`.tekton/` directory). On every PR:
 - `rpms-signature-scan-v02-pull-request` -- Builds the task container image
 - `rpms-signature-scan-tests-pull-request` -- Runs the task against known signed,
-  unsigned, and image-index test images, then verifies `TEST_OUTPUT`, `RPMS_DATA`,
-  and `IMAGES_PROCESSED` results
+  unsigned, image-index, and ModelCar test images, then verifies `TEST_OUTPUT`,
+  `RPMS_DATA`, `IMAGES_PROCESSED`, and `SCAN_LOG` results
 - `test-container-pull-request` -- Builds the repo-level test container
 
 There are no unit tests. Testing is done by running the actual Tekton tasks

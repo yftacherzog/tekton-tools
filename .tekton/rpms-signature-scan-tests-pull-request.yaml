@@ -39,6 +39,8 @@ spec:
             value: $(tasks.rpms-signature-scan-signed.results.RPMS_DATA)
           - name: IMAGES_PROCESSED
             value: $(tasks.rpms-signature-scan-signed.results.IMAGES_PROCESSED)
+          - name: SCAN_LOG
+            value: $(tasks.rpms-signature-scan-signed.results.SCAN_LOG)
         taskSpec:
           params:
             - name: TEST_OUTPUT
@@ -50,6 +52,9 @@ spec:
             - name: IMAGES_PROCESSED
               type: string
               description: Information about images processed
+            - name: SCAN_LOG
+              type: string
+              description: Diagnostic log from the scan step
           steps:
             - name: verify-output
               image: registry.access.redhat.com/ubi9/ubi-minimal:9.8-1786987521@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41
@@ -84,6 +89,14 @@ spec:
                   exit=1
                 fi
 
+                scan_log="$(params.SCAN_LOG)"
+                if [[ "$scan_log" == *"Selective extraction enabled"* ]]; then
+                  echo "ERROR: Selective extraction should NOT be triggered for regular images!"
+                  exit=1
+                else
+                  echo "No selective extraction (expected for regular image)"
+                fi
+
                 exit $exit
 
       - name: rpms-signature-scan-unsigned
@@ -105,6 +118,8 @@ spec:
             value: $(tasks.rpms-signature-scan-unsigned.results.RPMS_DATA)
           - name: IMAGES_PROCESSED
             value: $(tasks.rpms-signature-scan-unsigned.results.IMAGES_PROCESSED)
+          - name: SCAN_LOG
+            value: $(tasks.rpms-signature-scan-unsigned.results.SCAN_LOG)
         taskSpec:
           params:
             - name: TEST_OUTPUT
@@ -116,6 +131,9 @@ spec:
             - name: IMAGES_PROCESSED
               type: string
               description: Information about images processed
+            - name: SCAN_LOG
+              type: string
+              description: Diagnostic log from the scan step
           steps:
             - name: verify-output
               image: registry.access.redhat.com/ubi9/ubi-minimal:9.8-1786987521@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41
@@ -150,6 +168,14 @@ spec:
                   exit=1
                 fi
 
+                scan_log="$(params.SCAN_LOG)"
+                if [[ "$scan_log" == *"Selective extraction enabled"* ]]; then
+                  echo "ERROR: Selective extraction should NOT be triggered for regular images!"
+                  exit=1
+                else
+                  echo "No selective extraction (expected for regular image)"
+                fi
+
                 exit $exit
 
       - name: rpms-signature-scan-image-index
@@ -171,6 +197,8 @@ spec:
             value: $(tasks.rpms-signature-scan-image-index.results.RPMS_DATA)
           - name: IMAGES_PROCESSED
             value: $(tasks.rpms-signature-scan-image-index.results.IMAGES_PROCESSED)
+          - name: SCAN_LOG
+            value: $(tasks.rpms-signature-scan-image-index.results.SCAN_LOG)
         taskSpec:
           params:
             - name: TEST_OUTPUT
@@ -182,6 +210,9 @@ spec:
             - name: IMAGES_PROCESSED
               type: string
               description: Information about images processed
+            - name: SCAN_LOG
+              type: string
+              description: Diagnostic log from the scan step
           steps:
             - name: verify-output
               image: registry.access.redhat.com/ubi9/ubi-minimal:9.8-1786987521@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41
@@ -214,6 +245,99 @@ spec:
                   echo "images_processed matches!"
                 else
                   echo "images_processed does not match!"
+                  exit=1
+                fi
+
+                scan_log="$(params.SCAN_LOG)"
+                if [[ "$scan_log" == *"Selective extraction enabled"* ]]; then
+                  echo "ERROR: Selective extraction should NOT be triggered for regular images!"
+                  exit=1
+                else
+                  echo "No selective extraction (expected for regular image index)"
+                fi
+
+                exit $exit
+
+      - name: rpms-signature-scan-modelcar
+        params:
+        - name: image-url
+          value: "quay.io/vanguard_tests/modelcar-tiny:latest"
+        - name: image-digest
+          value: "sha256:1362515c7acef63dbbe3da693d4d9baf09abff6718c3ee947c1107299ce88eef"
+        taskRef:
+          name: rpms-signature-scan
+          kind: Task
+      - name: verify-output-modelcar
+        runAfter:
+          - rpms-signature-scan-modelcar
+        params:
+          - name: TEST_OUTPUT
+            value: $(tasks.rpms-signature-scan-modelcar.results.TEST_OUTPUT)
+          - name: RPMS_DATA
+            value: $(tasks.rpms-signature-scan-modelcar.results.RPMS_DATA)
+          - name: IMAGES_PROCESSED
+            value: $(tasks.rpms-signature-scan-modelcar.results.IMAGES_PROCESSED)
+          - name: SCAN_LOG
+            value: $(tasks.rpms-signature-scan-modelcar.results.SCAN_LOG)
+        taskSpec:
+          params:
+            - name: TEST_OUTPUT
+              type: string
+              description: output of the task
+            - name: RPMS_DATA
+              type: string
+              description: Information about signed and unsigned RPMs
+            - name: IMAGES_PROCESSED
+              type: string
+              description: Information about images processed
+            - name: SCAN_LOG
+              type: string
+              description: Diagnostic log from the scan step
+          steps:
+            - name: verify-output
+              image: registry.access.redhat.com/ubi9/ubi-minimal:9.8-1786987521@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41
+              script: |
+                #!/bin/bash
+                set -ex
+                exit=0
+
+                output=$(params.TEST_OUTPUT)
+                if [[ "$output" == *"completed successfully"* ]] &&
+                   [[ "$output" == *"SUCCESS"* ]]; then
+                  echo "Output matches!"
+                else
+                  echo "Output does not match!"
+                  exit=1
+                fi
+
+                results="$(params.RPMS_DATA)"
+                if [[ "$results" == *"199e2f91fd431d51: 80"* ]] &&
+                   [[ "$results" == *"unsigned: 0"* ]]; then
+                  echo "results matches!"
+                else
+                  echo "results does not match!"
+                  exit=1
+                fi
+
+                images_processed="$(params.IMAGES_PROCESSED)"
+                if [[ "$images_processed" == *"sha256:1362515c7acef63dbbe3da693d4d9baf09abff6718c3ee947c1107299ce88eef"* ]] &&
+                   [[ "$images_processed" == *"sha256:9535d17fcf879c2613402964a0a295ffe191752c532274546b0d0de89f46822e"* ]] &&
+                   [[ "$images_processed" == *"sha256:c0698d925aa0e75bd2632e1dbd60129cf3665559cfa62dbbb6b4e28796f19f3f"* ]] &&
+                   [[ "$images_processed" == *"sha256:c4933c8ab04166c5d1820a956233ebb647b27d7eedca16419c1607555c83a0c8"* ]] &&
+                   [[ "$images_processed" == *"sha256:95504c71ef7b169c489feb3c3467f85b8b48994546455bfeaf21fb063709a5f5"* ]]; then
+                  echo "images_processed matches!"
+                else
+                  echo "images_processed does not match!"
+                  exit=1
+                fi
+
+                scan_log="$(params.SCAN_LOG)"
+                if [[ "$scan_log" == *"Selective extraction enabled"* ]] &&
+                   [[ "$scan_log" == *"skipping 1 of 7 layers"* ]]; then
+                  echo "Selective layer extraction confirmed!"
+                else
+                  echo "Selective layer extraction NOT detected for ModelCar image!"
+                  echo "SCAN_LOG content: ${scan_log}"
                   exit=1
                 fi
 

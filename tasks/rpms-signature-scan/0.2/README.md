@@ -17,15 +17,23 @@ Scans RPMs in an image and provide information about RPMs signatures.
 |TEST_OUTPUT|Tekton task test output.|
 |RPMS_DATA|Information about signed and unsigned RPMs|
 |IMAGES_PROCESSED|Images processed in the task.|
+|SCAN_LOG|Diagnostic log from the RPM scan (e.g. selective extraction info).|
 
 
 ## Additional info
 
 The RPM's signature keys as well as the unsigned RPMs are saved into the `RPMS_DATA`
-result path and they are processed by Conforma to detemine whether the task should fail
+result path and they are processed by Conforma to determine whether the task should fail
 or not.
 
 The task will fail in case one or more images have failed the scan.
+
+### ModelCar / OLOT image support
+
+The task automatically detects ModelCar images built with
+[OLOT](https://github.com/containers/olot) (OCI Layers On Top). Layers annotated
+with `olot.layer.content.*` are skipped during RPM database extraction, avoiding
+unnecessary I/O on large model-data layers. Regular images are unaffected.
 
 ## Source repository for image:
 
