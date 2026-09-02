@@ -1,0 +1,152 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/tekton-tools?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-event: '[pull_request]'
+    pipelinesascode.tekton.dev/on-target-branch: '[main]'
+    pipelinesascode.tekton.dev/task: tasks/build-helm-chart-oci-ta/0.4/build-helm-chart-oci-ta.yaml
+  labels:
+    appstudio.openshift.io/application: tekton-tools
+    appstudio.openshift.io/component: tekton-tools
+    pipelines.appstudio.openshift.io/type: build
+    release.appstudio.openshift.io/auto-release: "false"
+  name: build-helm-chart-oci-ta-tests-pull-request
+  namespace: konflux-vanguard-tenant
+spec:
+  params:
+    - name: git-url
+      value: '{{source_url}}'
+    - name: revision
+      value: '{{revision}}'
+    - name: output-image
+      value: quay.io/redhat-user-workloads/konflux-vanguard-tenant/tekton-tools/helm-chart-oci-e2e:on-pr-{{revision}}
+    - name: image-expires-after
+      value: 5d
+  pipelineSpec:
+    params:
+      - name: git-url
+        type: string
+      - name: revision
+        type: string
+      - name: output-image
+        type: string
+      - name: image-expires-after
+        type: string
+        default: ""
+    tasks:
+      - name: init
+        taskRef:
+          params:
+            - name: name
+              value: init
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-init:0.4.3@sha256:5f687152ab0661f84830877de93a8ec45cb0b756f71b24ac55133d03a4007936
+            - name: kind
+              value: task
+          resolver: bundles
+      - name: clone-repository
+        runAfter:
+          - init
+        params:
+          - name: url
+            value: $(params.git-url)
+          - name: revision
+            value: $(params.revision)
+          - name: ociStorage
+            value: $(params.output-image).git
+          - name: ociArtifactExpiresAfter
+            value: $(params.image-expires-after)
+        taskRef:
+          params:
+            - name: name
+              value: git-clone-oci-ta
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.2.6@sha256:3bcd4c39a346d29617013f4c47d245d38f020cdbf814cf3ce095911c528f5003
+            - name: kind
+              value: task
+          resolver: bundles
+        workspaces:
+          - name: basic-auth
+            workspace: git-auth
+      - name: build-helm-chart-oci-ta
+        runAfter:
+          - clone-repository
+        params:
+          - name: IMAGE
+            value: $(params.output-image)
+          - name: SOURCE_ARTIFACT
+            value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+          - name: COMMIT_SHA
+            value: $(tasks.clone-repository.results.commit)
+          - name: CHART_CONTEXT
+            value: tasks/build-helm-chart-oci-ta/0.4/testdata/chart
+          - name: CHART_VERSION
+            value: "0.1.0+test"
+          - name: APP_VERSION
+            value: "test"
+          - name: VALUES_FILES
+            value:
+              - values.yaml
+        taskRef:
+          name: build-helm-chart-oci-ta
+          kind: Task
+      - name: verify-chart-push
+        runAfter:
+          - build-helm-chart-oci-ta
+        params:
+          - name: IMAGE_URL
+            value: $(tasks.build-helm-chart-oci-ta.results.IMAGE_URL)
+          - name: IMAGE_DIGEST
+            value: $(tasks.build-helm-chart-oci-ta.results.IMAGE_DIGEST)
+          - name: EXPECTED_IMAGE
+            value: $(params.output-image)
+        taskSpec:
+          params:
+            - name: IMAGE_URL
+              type: string
+            - name: IMAGE_DIGEST
+              type: string
+            - name: EXPECTED_IMAGE
+              type: string
+          steps:
+            - name: verify
+              image: registry.access.redhat.com/ubi9/ubi-minimal:9.8-1786987521@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41
+              script: |
+                #!/bin/bash
+                set -ex
+
+                image_url="$(params.IMAGE_URL)"
+                image_digest="$(params.IMAGE_DIGEST)"
+                expected_image="$(params.EXPECTED_IMAGE)"
+
+                if [[ -z "$image_url" ]]; then
+                  echo "IMAGE_URL is empty"
+                  exit 1
+                fi
+
+                if [[ "$image_url" != *"helm-chart-oci-e2e:"* ]]; then
+                  echo "unexpected IMAGE_URL: $image_url"
+                  exit 1
+                fi
+
+                if [[ -z "$image_digest" ]]; then
+                  echo "WARNING: IMAGE_DIGEST is empty (non-fatal, matches bash task behavior)"
+                fi
+
+                # The task also tags the chart with the full IMAGE reference.
+                echo "Chart pushed at $image_url (digest: ${image_digest:-unknown})"
+                echo "Additional tag: $expected_image"
+    workspaces:
+      - name: git-auth
+        optional: true
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-tekton-tools
+  workspaces:
+    - name: git-auth
+      secret:
+        secretName: '{{ git_auth_secret }}'

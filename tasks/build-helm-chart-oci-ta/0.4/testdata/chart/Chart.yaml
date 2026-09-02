@@ -1,0 +1,6 @@
+apiVersion: v2
+name: test-chart
+description: Minimal chart for build-helm-chart-oci-ta CI
+type: application
+version: 0.0.1
+appVersion: "1.0.0"
