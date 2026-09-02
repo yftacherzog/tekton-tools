@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-chart
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: product-chart
+  template:
+    metadata:
+      labels:
+        app: product-chart
+    spec:
+      containers:
+        - name: product-chart
+          image: busybox:latest

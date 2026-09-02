@@ -4,19 +4,17 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/yftacherzog/tekton-tools?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
-    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "true"
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "main" && "tasks/build-helm-chart-oci-ta/0.4/***".pathChanged()
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: tekton-tools
-    appstudio.openshift.io/component: rpms-signature-scan-v02
+    appstudio.openshift.io/component: build-helm-chart-oci-ta-v04
     pipelines.appstudio.openshift.io/type: build
-    release.appstudio.openshift.io/auto-release: "false"
-  name: rpms-signature-scan-v02-on-pull-request
+  name: build-helm-chart-oci-ta-v04-on-push
   namespace: default-tenant
 spec:
   params:
@@ -25,13 +23,11 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/yftacherzog-konflux/default-tenant/tekton-tools/rpms-signature-scan-v02:on-pr-{{revision}}
-  - name: image-expires-after
-    value: 5d
+    value: quay.io/yftacherzog-konflux/default-tenant/tekton-tools/build-helm-chart-oci-ta-v04:{{revision}}
   - name: dockerfile
     value: Dockerfile
   - name: path-context
-    value: tasks/rpms-signature-scan/0.2
+    value: tasks/build-helm-chart-oci-ta/0.4
   pipelineSpec:
     params:
     - description: Source Repository URL
@@ -74,10 +70,6 @@ spec:
       description: Add built image into an OCI image index
       name: build-image-index
       type: string
-    - name: enable-cache-proxy
-      default: 'false'
-      description: Enable cache proxy configuration
-      type: string
     - name: enable-package-registry-proxy
       default: 'true'
       description: Use the package registry proxy when prefetching dependencies
@@ -101,9 +93,6 @@ spec:
       value: $(tasks.clone-repository.results.commit)
     tasks:
     - name: init
-      params:
-      - name: enable-cache-proxy
-        value: $(params.enable-cache-proxy)
       taskRef:
         params:
         - name: name
@@ -247,51 +236,4 @@ spec:
       - name: SOURCE_ARTIFACT
         value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
       - name: CACHI2_ARTIFACT
-        value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
-      - name: TARGET_DIRS
-        value: $(params.sast-target-dirs)
-      runAfter:
-      - build-image-index
-      taskRef:
-        params:
-        - name: name
-          value: sast-unicode-check-oci-ta
-        - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-sast-unicode-check-oci-ta:0.4@sha256:daa5631d9df741d55a032915ac3e82c6a97f900a3584c972ec2541845fad4286
-        - name: kind
-          value: task
-        resolver: bundles
-      when:
-      - input: $(params.skip-checks)
-        operator: in
-        values:
-        - "false"
-    - name: apply-tags
-      params:
-      - name: IMAGE_URL
-        value: $(tasks.build-image-index.results.IMAGE_URL)
-      - name: IMAGE_DIGEST
-        value: $(tasks.build-container.results.IMAGE_DIGEST)
-      runAfter:
-      - build-image-index
-      taskRef:
-        params:
-        - name: name
-          value: apply-tags
-        - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.3@sha256:2dae3c4beaf1070db565c536bc997e93925ae8c0c45dd8da9b4ae5293fd8c592
-        - name: kind
-          value: task
-        resolver: bundles
-    workspaces:
-    - name: git-auth
-      optional: true
-    - name: netrc
-      optional: true
-  taskRunTemplate:
-    serviceAccountName: build-pipeline-rpms-signature-scan-v02
-  workspaces:
-  - name: git-auth
-    secret:
-      secretName: '{{ git_auth_secret }}'
-status: {}
+        value: $(tasks.prefetch-depen

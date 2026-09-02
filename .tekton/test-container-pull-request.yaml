@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/tekton-tools?rev={{revision}}
+    build.appstudio.openshift.io/repo: https://github.com/yftacherzog/tekton-tools?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
@@ -18,7 +18,7 @@ metadata:
     pipelines.appstudio.openshift.io/type: build
     release.appstudio.openshift.io/auto-release: "false"
   name: test-container-on-pull-request
-  namespace: konflux-vanguard-tenant
+  namespace: default-tenant
 spec:
   params:
   - name: dockerfile
@@ -28,7 +28,7 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: output-image
-    value: quay.io/redhat-user-workloads/konflux-vanguard-tenant/tekton-tools/test-container:on-pr-{{revision}}
+    value: quay.io/yftacherzog-konflux/default-tenant/tekton-tools/test-container:on-pr-{{revision}}
   - name: path-context
     value: .
   - name: revision

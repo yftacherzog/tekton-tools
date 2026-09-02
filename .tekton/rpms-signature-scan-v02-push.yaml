@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/tekton-tools?rev={{revision}}
+    build.appstudio.openshift.io/repo: https://github.com/yftacherzog/tekton-tools?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
@@ -15,7 +15,7 @@ metadata:
     appstudio.openshift.io/component: rpms-signature-scan-v02
     pipelines.appstudio.openshift.io/type: build
   name: rpms-signature-scan-v02-on-push
-  namespace: konflux-vanguard-tenant
+  namespace: default-tenant
 spec:
   params:
   - name: git-url
@@ -23,7 +23,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/konflux-vanguard-tenant/tekton-tools/rpms-signature-scan-v02:{{revision}}
+    value: quay.io/yftacherzog-konflux/default-tenant/tekton-tools/rpms-signature-scan-v02:{{revision}}
   - name: dockerfile
     value: Dockerfile
   - name: path-context
