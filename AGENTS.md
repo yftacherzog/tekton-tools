@@ -23,7 +23,10 @@ those tasks, and supporting configuration for Kerberos-based compose generation.
 
 - **rpms-signature-scan** (`tasks/rpms-signature-scan/0.2/`): Scans RPMs in a
   container image and reports signature status. Uses `rpm_verifier` from
-  `quay.io/konflux-ci/tools`. This is the primary actively maintained task.
+  `quay.io/konflux-ci/tools`.
+- **build-helm-chart-oci-ta** (`tasks/build-helm-chart-oci-ta/0.4/`): Packages
+  and pushes a Helm chart to an OCI registry. Uses `helm-chart-oci` from
+  `quay.io/konflux-ci/tools`.
 - **generate-odcs-compose** (`tasks/generate-odcs-compose/`): **Deprecated**.
   Generates ODCS composes for RPM repositories.
 - **provision-env-with-ephemeral-namespace** (`tasks/provision-env-with-ephemeral-namespace/`):
@@ -42,10 +45,16 @@ Tasks follow `<name>/<major>.<minor>/` directory layout:
 ## CI / Testing
 
 CI runs via Konflux Pipelines-as-Code (`.tekton/` directory). On every PR:
-- `rpms-signature-scan-v02-pull-request` -- Builds the task container image
+- `rpms-signature-scan-v02-pull-request` -- Builds the rpms-signature-scan task
+  bundle image
 - `rpms-signature-scan-tests-pull-request` -- Runs the task against known signed,
   unsigned, image-index, and ModelCar test images, then verifies `TEST_OUTPUT`,
   `RPMS_DATA`, `IMAGES_PROCESSED`, and `SCAN_LOG` results
+- `build-helm-chart-oci-ta-v04-pull-request` -- Builds the
+  build-helm-chart-oci-ta task bundle image
+- `build-helm-chart-oci-ta-tests-pull-request` -- Runs build-helm-chart-oci-ta
+  against test charts (overwrite and no-overwrite paths), then verifies pushes
+  via `skopeo`
 - `test-container-pull-request` -- Builds the repo-level test container
 
 There are no unit tests. Testing is done by running the actual Tekton tasks
