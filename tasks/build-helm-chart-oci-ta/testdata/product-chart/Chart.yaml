@@ -1,0 +1,6 @@
+apiVersion: v2
+name: build-helm-chart-oci-ta-v04
+description: OVERWRITE_CHART_NAME=false fixture; see testdata/README.md
+type: application
+version: 0.0.1
+appVersion: "1.0.0"

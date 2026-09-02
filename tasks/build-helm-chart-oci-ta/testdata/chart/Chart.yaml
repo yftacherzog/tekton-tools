@@ -1,0 +1,6 @@
+apiVersion: v2
+name: test-chart
+description: Default overwrite fixture; see testdata/README.md
+type: application
+version: 0.0.1
+appVersion: "1.0.0"
