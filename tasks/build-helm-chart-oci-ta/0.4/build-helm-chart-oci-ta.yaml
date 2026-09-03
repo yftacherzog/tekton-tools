@@ -1,0 +1,159 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-helm-chart-oci-ta
+  labels:
+    app.kubernetes.io/version: "0.4.0"
+spec:
+  description: |-
+    Packages and pushes a Helm chart to an OCI repository.
+
+    Version 0.4 replaces the inline bash implementation with the
+    helm-chart-oci Go binary from konflux-ci/tools. Parameters and results
+    match 0.3, with optional OVERWRITE_CHART_NAME for chart naming.
+  params:
+    - name: CA_TRUST_CONFIG_MAP_KEY
+      description: The name of the key in the ConfigMap that contains the
+        CA bundle data.
+      type: string
+      default: ca-bundle.crt
+    - name: CA_TRUST_CONFIG_MAP_NAME
+      description: The name of the ConfigMap to read CA bundle data from.
+      type: string
+      default: trusted-ca
+    - name: CHART_CONTEXT
+      description: Path relative to SOURCE_CODE_DIR where the chart is located
+      default: dist/chart/
+    - name: COMMIT_SHA
+      description: Git commit sha to build chart for
+      type: string
+    - name: IMAGE_MAPPINGS
+      description: |-
+        JSON array of image mappings to substitute in chart templates.
+        Format: [{"source": "localhost/my/repo", "target": "quay.io/myorg/myapp"}]
+      type: string
+      default: "[]"
+    - name: IMAGE
+      description: Full image reference with tag (e.g., quay.io/org/tenant/app:on-pr-{{revision}})
+      type: string
+    - name: SOURCE_ARTIFACT
+      description: The Trusted Artifact URI pointing to the artifact with
+        the application source code.
+      type: string
+    - name: SOURCE_CODE_DIR
+      description: Path relative to the workingDir where the code was pulled
+        into
+      default: source
+    - name: TAG_PREFIX
+      description: An identifying prefix on which the version tag is to be
+        matched
+      default: helm-
+    - name: VALUES_FILES
+      description: Array of values file names to process for image substitution
+      type: array
+      default:
+        - values.yaml
+    - name: VERSION_SUFFIX
+      description: A suffix to be added to the version string
+      default: ""
+    - name: CHART_VERSION
+      description: >-
+        Optional chart version string. When set, this value is used directly
+        instead of computing a version from git metadata.
+      type: string
+      default: ""
+    - name: APP_VERSION
+      description: >-
+        Optional appVersion override. When set, this value is used directly
+        instead of defaulting to COMMIT_SHA.
+      type: string
+      default: ""
+    - name: OVERWRITE_CHART_NAME
+      description: >-
+        When true (default), rewrite Chart.yaml name from the IMAGE repository
+        basename to match build-helm-chart-oci-ta 0.3 behavior. When false,
+        preserve the chart name from Chart.yaml and push to that OCI chart path.
+      type: string
+      default: "true"
+  results:
+    - name: IMAGE_DIGEST
+      description: Digest of the OCI-Artifact just built
+    - name: IMAGE_URL
+      description: OCI-Artifact repository and tag where the built OCI-Artifact
+        was pushed
+  volumes:
+    - name: trusted-ca
+      configMap:
+        items:
+          - key: $(params.CA_TRUST_CONFIG_MAP_KEY)
+            path: ca-bundle.crt
+        name: $(params.CA_TRUST_CONFIG_MAP_NAME)
+        optional: true
+    - name: workdir
+      emptyDir: {}
+  stepTemplate:
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /var/workdir
+        name: workdir
+  steps:
+    - name: use-trusted-artifact
+      image: quay.io/konflux-ci/build-trusted-artifacts:latest@sha256:7b4f5bbf8b8aa663beaf18bfef4fd16ba1cb5ce846d1fc776a64b312c52ee28c
+      args:
+        - use
+        - $(params.SOURCE_ARTIFACT)=/var/workdir/source
+      volumeMounts:
+        - mountPath: /etc/pki/tls/certs/ca-custom-bundle.crt
+          name: trusted-ca
+          readOnly: true
+          subPath: ca-bundle.crt
+      computeResources:
+        limits:
+          memory: 64Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+    - name: package-and-push
+      # PR tools image with helm-chart-oci; pin by digest after merge to main.
+      image: quay.io/redhat-user-workloads/konflux-vanguard-tenant/tools/tools:on-pr-0fb6b74544fbcc54e514ad763e6ebcb395074ce6
+      workingDir: /var/workdir
+      env:
+        - name: IMAGE
+          value: $(params.IMAGE)
+        - name: COMMIT_SHA
+          value: $(params.COMMIT_SHA)
+        - name: SOURCE_CODE_DIR
+          value: $(params.SOURCE_CODE_DIR)
+        - name: CHART_CONTEXT
+          value: $(params.CHART_CONTEXT)
+        - name: VERSION_SUFFIX
+          value: $(params.VERSION_SUFFIX)
+        - name: TAG_PREFIX
+          value: $(params.TAG_PREFIX)
+        - name: IMAGE_MAPPINGS
+          value: $(params.IMAGE_MAPPINGS)
+        - name: CHART_VERSION
+          value: $(params.CHART_VERSION)
+        - name: APP_VERSION
+          value: $(params.APP_VERSION)
+        - name: OVERWRITE_CHART_NAME
+          value: $(params.OVERWRITE_CHART_NAME)
+      computeResources:
+        limits:
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+      args:
+        - "$(params.VALUES_FILES[*])"
+      script: |
+        #!/bin/bash
+        set -ex
+
+        helm-chart-oci \
+          --image-url-result "$(results.IMAGE_URL.path)" \
+          --image-digest-result "$(results.IMAGE_DIGEST.path)" \
+          "$@"
+      securityContext:
+        runAsUser: 0

@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/tekton-tools?rev={{revision}}
+    build.appstudio.openshift.io/repo: https://github.com/yftacherzog/tekton-tools?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
@@ -16,7 +16,7 @@ metadata:
     pipelines.appstudio.openshift.io/type: build
     release.appstudio.openshift.io/auto-release: "false"
   name: rpms-signature-scan-tests-pull-request
-  namespace: konflux-vanguard-tenant
+  namespace: default-tenant
 spec:
   pipelineSpec:
     tasks:

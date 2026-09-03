@@ -13,10 +13,10 @@ metadata:
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: tekton-tools
-    appstudio.openshift.io/component: rpms-signature-scan-v02
+    appstudio.openshift.io/component: build-helm-chart-oci-ta-v04
     pipelines.appstudio.openshift.io/type: build
     release.appstudio.openshift.io/auto-release: "false"
-  name: rpms-signature-scan-v02-on-pull-request
+  name: build-helm-chart-oci-ta-v04-on-pull-request
   namespace: default-tenant
 spec:
   params:
@@ -25,13 +25,13 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/yftacherzog-konflux/default-tenant/tekton-tools/rpms-signature-scan-v02:on-pr-{{revision}}
+    value: quay.io/yftacherzog-konflux/default-tenant/tekton-tools/build-helm-chart-oci-ta-v04:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: dockerfile
     value: Dockerfile
   - name: path-context
-    value: tasks/rpms-signature-scan/0.2
+    value: tasks/build-helm-chart-oci-ta/0.4
   pipelineSpec:
     params:
     - description: Source Repository URL
@@ -289,7 +289,7 @@ spec:
     - name: netrc
       optional: true
   taskRunTemplate:
-    serviceAccountName: build-pipeline-rpms-signature-scan-v02
+    serviceAccountName: build-pipeline-build-helm-chart-oci-ta-v04
   workspaces:
   - name: git-auth
     secret:
