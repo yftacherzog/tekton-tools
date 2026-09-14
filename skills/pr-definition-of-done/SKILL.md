@@ -45,13 +45,15 @@ Additionally, GitHub Actions checks `AGENTS.md` stays under 300 lines.
 - All container images **must use digest** (`@sha256:...`), never tags
 - Task step images come from `quay.io/konflux-ci/tools` or `quay.io/konflux-ci/konflux-test`
 - Base images use `registry.access.redhat.com` (e.g. `ubi8/ubi-minimal`, `ubi9/ubi-minimal`)
-- Renovate auto-updates digests in `tasks/rpms-signature-scan/0.2/**` and `.tekton/**` --
-  do not manually update digests that Renovate manages
+- Renovate auto-updates digests in `tasks/rpms-signature-scan/0.2/**`,
+  `tasks/build-helm-chart-oci-ta/0.4/**`, and `.tekton/**` -- do not manually update
+  digests that Renovate manages
 
 ## Task Changes
 
-Only `rpms-signature-scan` is actively maintained. The other tasks (`generate-odcs-compose`,
-`provision-env-with-ephemeral-namespace`) are deprecated and pending removal.
+Actively maintained: `rpms-signature-scan` and `build-helm-chart-oci-ta`. Deprecated
+tasks (`generate-odcs-compose`, `provision-env-with-ephemeral-namespace`) are pending
+removal.
 
 ### Version bumping
 
@@ -98,16 +100,22 @@ For task changes, ensure the corresponding `.tekton/` pipelines exist:
 | `test-container-pull-request.yaml` | PR to main | Lints + builds root container + runs rpms-signature-scan against it |
 | `<name>-pull-request.yaml` | PR to main | Build task bundle |
 | `<name>-push.yaml` | Push to main | Publish task bundle (tagged with commit SHA) |
-| `<name>-tests-pull-request.yaml` | PR to main | Run task against test images, verify results |
+| `<name>-tests-pull-request.yaml` | PR to main | Run task integration tests (external images or in-repo fixtures) |
 
 ### After merge: propagation to build-definitions
 
 Once the push pipeline builds the bundle, a Konflux release pipeline automatically
-pushes it to `quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan` (tagged
-`0.2`, `0.2-{git_sha}`, etc.). Renovate in `konflux-ci/build-definitions` then
-detects the new digest and opens a PR to update
-`external-task/rpms-signature-scan/0.2/rpms-signature-scan.yaml`. No manual action
-is needed -- the updated task becomes available in the catalog once that PR merges.
+pushes it to the mapped `quay.io/konflux-ci/tekton-catalog/task-<name>` repository.
+Renovate in `konflux-ci/build-definitions` then detects the new digest and opens a
+PR to update the matching `external-task/<name>/<version>/` file.
+
+| Task | external-task path |
+|------|-------------------|
+| `rpms-signature-scan` 0.2 | `external-task/rpms-signature-scan/0.2/rpms-signature-scan.yaml` |
+| `build-helm-chart-oci-ta` 0.4 | `external-task/build-helm-chart-oci-ta/0.4/build-helm-chart-oci-ta.yaml` |
+
+No manual sync is needed after the initial `external-task/` commit with a real digest.
+The catalog entry becomes available in build-definitions once the Renovate PR merges.
 
 ## Final Checklist
 
@@ -118,3 +126,4 @@ is needed -- the updated task becomes available in the catalog once that PR merg
 - [ ] MIGRATION.md added (if breaking change)
 - [ ] OWNERS file present (if new task)
 - [ ] .tekton/ pipelines exist (if new task)
+- [ ] `external-task/<name>/<version>/` in build-definitions (after first catalog publish)

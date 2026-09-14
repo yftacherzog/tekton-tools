@@ -33,7 +33,7 @@ This makes the task available as a local `Task` kind in the pipeline. The
 `rpms-signature-scan` alongside the published catalog version -- both scan the
 same built image so you can compare behavior.
 
-## Dual rpms-signature-scan Execution
+## Dual rpms-signature-scan Execution (rpms only)
 
 `test-container-pull-request` runs `rpms-signature-scan` **twice**:
 
@@ -44,10 +44,15 @@ same built image so you can compare behavior.
 Both run against the freshly-built root container. This catches regressions where
 the PR's changes break something that the released version handles correctly.
 
+`build-helm-chart-oci-ta` does not run in `test-container-pull-request`. It has a
+dedicated integration pipeline (`build-helm-chart-oci-ta-tests-pull-request`) that
+clones the PR source, runs the task twice (overwrite and `OVERWRITE_CHART_NAME=false`),
+and verifies chart pushes with `skopeo`.
+
 ## Trusted-Artifacts Build Path
 
-The task bundle build (`rpms-signature-scan-v02-pull-request`) uses the Konflux
-trusted-artifacts pipeline:
+Task bundle builds (for example `rpms-signature-scan-v02-pull-request` or
+`build-helm-chart-oci-ta-v04-pull-request`) use the Konflux trusted-artifacts pipeline:
 
 ```
 init → git-clone-oci-ta → prefetch-dependencies → tkn-bundle-oci-ta → build-image-index → SAST → apply-tags
@@ -61,6 +66,7 @@ Tekton catalog.
 
 Renovate auto-updates container image digests in:
 - `tasks/rpms-signature-scan/0.2/**`
+- `tasks/build-helm-chart-oci-ta/0.4/**`
 - `.tekton/**`
 
 Configured in `renovate.json`. Key implications:
@@ -77,6 +83,8 @@ All pipelines run in namespace `konflux-vanguard-tenant` with dedicated service 
 |----------|----------------|
 | `test-container-*` | `build-pipeline-test-container` |
 | `rpms-signature-scan-v02-*` | `build-pipeline-rpms-signature-scan-v02` |
+| `build-helm-chart-oci-ta-v04-*` | `build-pipeline-build-helm-chart-oci-ta-v04` |
+| `build-helm-chart-oci-ta-tests-*` | `build-pipeline-build-helm-chart-oci-ta-v04` |
 
 These are pre-provisioned in the Konflux tenant. You cannot run these pipelines
 outside that namespace without recreating the RBAC setup.
@@ -134,22 +142,27 @@ actually change. It does NOT run on every push to main.
 
 ## How Task Updates Reach build-definitions
 
-The full release flow after merging to `main`:
+The release flow is the same for each maintained task. After merging to `main`:
 
-1. **Push pipeline** (`rpms-signature-scan-v02-on-push`) builds the task bundle and
-   pushes it to `quay.io/redhat-user-workloads/.../rpms-signature-scan-v02:{commit-sha}`
-2. **Release pipeline** triggers automatically via a `ReleasePlanAdmission` (policy:
-   `tekton-bundle-standard`). It pushes the bundle to the external registry:
-   `quay.io/konflux-ci/tekton-catalog/task-rpms-signature-scan` with tags:
-   - `0.2`
-   - `0.2-{git_sha}`
-   - `0.2-{oci_version}`
-   - `{oci_version}`
-   - `{oci_version}-{timestamp}`
+1. **Push pipeline** (path-filtered, e.g. `rpms-signature-scan-v02-on-push` or
+   `build-helm-chart-oci-ta-v04-on-push`) builds the task bundle and pushes the
+   workload image to `quay.io/redhat-user-workloads/.../<component>:{commit-sha}`
+2. **Release pipeline** triggers automatically via `ReleasePlanAdmission` (policy:
+   `tekton-bundle-standard`). It pushes the bundle to the mapped catalog repository
+   with tags like `<major.minor>`, `<major.minor>-{git_sha}`, and `{oci_version}`
 3. **Renovate** in [`konflux-ci/build-definitions`](https://github.com/konflux-ci/build-definitions)
-   detects the new digest and opens a PR to update
-   `external-task/rpms-signature-scan/0.2/rpms-signature-scan.yaml`
+   detects the new digest and opens a PR to update the matching `external-task/` file
 4. Once that PR merges, the updated task is available in the build-definitions catalog
 
-This is fully automated -- no manual sync is needed. The release pipeline uses
+| Task | Component | Catalog repository | external-task path |
+|------|-----------|-------------------|-------------------|
+| `rpms-signature-scan` 0.2 | `rpms-signature-scan-v02` | `task-rpms-signature-scan` | `external-task/rpms-signature-scan/0.2/` |
+| `build-helm-chart-oci-ta` 0.4 | `build-helm-chart-oci-ta-v04` | `task-build-helm-chart-oci-ta` | `external-task/build-helm-chart-oci-ta/0.4/` |
+
+Push pipelines only run when files under their task directory change, so unrelated
+task merges do not rebuild each other. Each component release maps to a separate
+catalog repository — no collision between tasks.
+
+The first `external-task/` commit needs a real published digest; Renovate handles
+subsequent updates. The release pipeline is
 `push-tekton-task-bundles-to-external-registry` from `konflux-ci/release-service-catalog`.

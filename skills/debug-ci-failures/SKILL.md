@@ -55,6 +55,21 @@ a failed status.
 | `rpms-signature-scan-unsigned` | Same as above | Same as above |
 | `rpms-signature-scan-image-index` | Multi-arch resolution failure | Check image-index manifest is intact |
 
+### build-helm-chart-oci-ta-v04-on-pull-request
+
+Same bundle-build stages as `rpms-signature-scan-v02-on-pull-request` (`tkn-bundle-oci-ta`,
+SAST, etc.). `path-context` must be `tasks/build-helm-chart-oci-ta/0.4`.
+
+### build-helm-chart-oci-ta-tests-pull-request
+
+| Stage | Common Failure | Fix |
+|-------|---------------|-----|
+| `build-helm-chart-oci-ta` | `helm-chart-oci` error | Check `IMAGE_MAPPINGS` JSON, fixture `values.yaml`, or tools image digest |
+| `build-helm-chart-oci-ta-no-overwrite` | Push/auth failure | Chart name must match onboarded Quay repo; see `testdata/README.md` |
+| `verify-chart-push` | `skopeo` / digest mismatch | Confirm chart reached registry; check OCI metadata version string |
+| `verify-chart-push` | `IMAGE_MAPPINGS verification failed` | Packaged `values.yaml` missing expected repo/tag — source string mismatch |
+| `verify-chart-push` | `failed to locate chart layer blob` | Layer path after `skopeo copy dir:` — digest file is at temp dir root, not `blobs/sha256/` |
+
 ## Understanding Test Results
 
 The `rpms-signature-scan` task produces four results:

@@ -75,26 +75,33 @@ This is checked by `.github/workflows/lint.yaml` on every PR.
 
 ## Scope
 
-Only `rpms-signature-scan` (in `tasks/rpms-signature-scan/0.2/`) is actively maintained.
-The other two tasks are deprecated and pending removal:
+Actively maintained:
+
+- `tasks/rpms-signature-scan/0.2/`
+- `tasks/build-helm-chart-oci-ta/0.4/`
+
+Deprecated (do not invest effort linting or testing):
+
 - `tasks/generate-odcs-compose/`
 - `tasks/provision-env-with-ephemeral-namespace/`
 
-Do not invest effort linting or testing the deprecated tasks.
-
 ## Integration Tests (CI Only)
 
-Integration tests run in Konflux via `.tekton/rpms-signature-scan-tests-pull-request.yaml`.
-They cannot be run locally -- they require a Konflux cluster with Pipelines-as-Code.
+Integration tests run in Konflux and cannot be run locally — they require a Konflux
+cluster with Pipelines-as-Code. Each maintained task has its own tests pipeline with
+PAC task injection.
 
-The pipeline injects the PR's version of `rpms-signature-scan` via the PAC annotation:
+### rpms-signature-scan
+
+Pipeline: `.tekton/rpms-signature-scan-tests-pull-request.yaml`
+
 ```yaml
 pipelinesascode.tekton.dev/task: tasks/rpms-signature-scan/0.2/rpms-signature-scan.yaml
 ```
 
-### Test scenarios
+#### Test scenarios
 
-Three scenarios run against pinned test images in `quay.io/vanguard_tests/`:
+Four scenarios run against pinned test images in `quay.io/vanguard_tests/`:
 
 | Scenario | Image | Expected RPMS_DATA |
 |----------|-------|--------------------|
@@ -106,6 +113,25 @@ Each scenario verifies:
 - `TEST_OUTPUT` contains `"completed successfully"` and `"SUCCESS"`
 - `RPMS_DATA` matches expected signature key counts
 - `IMAGES_PROCESSED` lists the correct digest(s)
+
+### build-helm-chart-oci-ta
+
+Pipeline: `.tekton/build-helm-chart-oci-ta-tests-pull-request.yaml`
+
+```yaml
+pipelinesascode.tekton.dev/task: tasks/build-helm-chart-oci-ta/0.4/build-helm-chart-oci-ta.yaml
+```
+
+Two parallel branches after clone:
+
+| Branch | Exercises |
+|--------|-----------|
+| Overwrite (default) | `SOURCE_CODE_DIR=app`, `IMAGE_MAPPINGS`, chart name rewrite |
+| No-overwrite | `OVERWRITE_CHART_NAME=false`, preserved chart name |
+
+Fixtures live under `tasks/build-helm-chart-oci-ta/testdata/`. Verify steps use
+`skopeo` on the pushed chart and extract packaged `values.yaml` to confirm
+`IMAGE_MAPPINGS` substitution.
 
 ### Other CI pipelines
 

@@ -13,9 +13,17 @@ Reference: [Building Tekton Tasks in Konflux](https://konflux.pages.redhat.com/d
 
 ## Scope
 
-Only `rpms-signature-scan` is actively maintained. The deprecated tasks
-(`generate-odcs-compose`, `provision-env-with-ephemeral-namespace`) are pending removal.
-Use `tasks/rpms-signature-scan/0.2/` as the canonical example for all conventions.
+Actively maintained tasks:
+
+- `rpms-signature-scan` (`tasks/rpms-signature-scan/0.2/`)
+- `build-helm-chart-oci-ta` (`tasks/build-helm-chart-oci-ta/0.4/`)
+
+Deprecated tasks (`generate-odcs-compose`, `provision-env-with-ephemeral-namespace`) are
+pending removal.
+
+Use the rpms pipelines as the default template for bundle build/push. For integration
+tests, rpms scans external fixture images; helm clones the repo and verifies chart
+pushes — see `build-helm-chart-oci-ta-tests-pull-request.yaml`.
 
 ## Directory Layout
 
@@ -126,7 +134,8 @@ You need three pipeline definitions:
 - Run the task against known test images
 - Add verify steps asserting expected results
 
-Use the existing `rpms-signature-scan-v02-*` pipelines as templates.
+Use the existing `rpms-signature-scan-v02-*` or `build-helm-chart-oci-ta-v04-*`
+pipelines as templates (same `tekton-bundle-builder-oci-ta` flow).
 
 ### 5. Register the Konflux component
 
@@ -138,7 +147,25 @@ outside this repo via the releng gitops repo.
 
 For the task bundle to reach `quay.io/konflux-ci/tekton-catalog/`, a
 `ReleasePlanAdmission` must be configured with policy `tekton-bundle-standard`.
-This maps the component to the external registry URL and tags.
+This maps the component to the external registry URL and tags. Both maintained tasks
+use the same policy and `push-tekton-task-bundles-to-external-registry` release
+pipeline; each component maps to its own catalog repository (for example
+`task-rpms-signature-scan` or `task-build-helm-chart-oci-ta`).
+
+### 7. Add build-definitions external-task stub
+
+After the first catalog publish, add (or update) a version directory under
+`konflux-ci/build-definitions/external-task/<name>/<version>/` with a
+`task_bundle:` line pointing at the published digest:
+
+```yaml
+task_bundle: quay.io/konflux-ci/tekton-catalog/task-<name>:<version>@sha256:<digest>
+```
+
+Renovate in build-definitions (`vanguard` group in `renovate.json`) keeps this digest
+current after the initial commit. If replacing an in-repo task (like
+`build-helm-chart-oci-ta` 0.3 in `task/`), plan to archive the old version once
+consumers move to the external bundle.
 
 ## Updating an Existing Task
 
@@ -181,4 +208,5 @@ The migration script must:
 - [ ] .tekton/<name>-tests-pull-request.yaml
 - [ ] Konflux component registered
 - [ ] ReleasePlanAdmission configured for external registry
-- [ ] Renovate includePaths updated in renovate.json
+- [ ] Renovate includePaths updated in `tekton-tools/renovate.json`
+- [ ] `external-task/<name>/<version>/` added in build-definitions (after first publish)
