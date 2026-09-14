@@ -1,0 +1,343 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/tekton-tools?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-event: '[pull_request]'
+    pipelinesascode.tekton.dev/on-target-branch: '[main]'
+    pipelinesascode.tekton.dev/task: tasks/build-helm-chart-oci-ta/0.4/build-helm-chart-oci-ta.yaml
+  labels:
+    appstudio.openshift.io/application: tekton-tools
+    appstudio.openshift.io/component: tekton-tools
+    pipelines.appstudio.openshift.io/type: build
+    release.appstudio.openshift.io/auto-release: "false"
+  name: build-helm-chart-oci-ta-tests-pull-request
+  namespace: konflux-vanguard-tenant
+spec:
+  params:
+    - name: git-url
+      value: '{{source_url}}'
+    - name: revision
+      value: '{{revision}}'
+    - name: output-image
+      value: quay.io/redhat-user-workloads/konflux-vanguard-tenant/tekton-tools/build-helm-chart-oci-ta-v04:helm-e2e-on-pr-{{revision}}
+    - name: no-overwrite-output-image
+      value: quay.io/redhat-user-workloads/konflux-vanguard-tenant/tekton-tools/build-helm-chart-oci-ta-v04:helm-no-overwrite-on-pr-{{revision}}
+    - name: image-expires-after
+      value: 5d
+  pipelineSpec:
+    params:
+      - name: git-url
+        type: string
+      - name: revision
+        type: string
+      - name: output-image
+        type: string
+      - name: no-overwrite-output-image
+        type: string
+      - name: image-expires-after
+        type: string
+        default: ""
+    tasks:
+      - name: init
+        taskRef:
+          params:
+            - name: name
+              value: init
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-init:0.4.3@sha256:f71e6710ff88f675ab27fcd1ba9ec4cad88d7169b5da018c51dde44f1ba7921c
+            - name: kind
+              value: task
+          resolver: bundles
+      - name: clone-repository
+        runAfter:
+          - init
+        params:
+          - name: url
+            value: $(params.git-url)
+          - name: revision
+            value: $(params.revision)
+          - name: ociStorage
+            value: $(params.output-image).git
+          - name: ociArtifactExpiresAfter
+            value: $(params.image-expires-after)
+        taskRef:
+          params:
+            - name: name
+              value: git-clone-oci-ta
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.2.6@sha256:fbd392bffc0bb04f639e0c0044f36ce7f9f4a283add5bea69a127b80608cad0c
+            - name: kind
+              value: task
+          resolver: bundles
+        workspaces:
+          - name: basic-auth
+            workspace: git-auth
+      - name: build-helm-chart-oci-ta
+        runAfter:
+          - clone-repository
+        params:
+          - name: IMAGE
+            value: $(params.output-image)
+          - name: SOURCE_ARTIFACT
+            value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+          - name: COMMIT_SHA
+            value: $(tasks.clone-repository.results.commit)
+          - name: SOURCE_CODE_DIR
+            value: app
+          - name: CHART_CONTEXT
+            value: tasks/build-helm-chart-oci-ta/testdata/chart
+          - name: CHART_VERSION
+            value: "0.1.0+test"
+          - name: APP_VERSION
+            value: "test"
+          - name: VALUES_FILES
+            value:
+              - values.yaml
+          - name: IMAGE_MAPPINGS
+            value: '[{"source":"localhost/test-chart:old","target":"quay.io/konflux-ci/tools:mapped-e2e"}]'
+        taskRef:
+          name: build-helm-chart-oci-ta
+          kind: Task
+      # OVERWRITE_CHART_NAME=false: keeps Chart.yaml name (see testdata/README.md).
+      # Chart name matches the onboarded Quay repo so CI can push; decoupled
+      # chart-name vs IMAGE-basename behavior is tested in konflux-ci/tools.
+      - name: build-helm-chart-oci-ta-no-overwrite
+        runAfter:
+          - clone-repository
+        params:
+          - name: IMAGE
+            value: $(params.no-overwrite-output-image)
+          - name: SOURCE_ARTIFACT
+            value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+          - name: COMMIT_SHA
+            value: $(tasks.clone-repository.results.commit)
+          - name: CHART_CONTEXT
+            value: tasks/build-helm-chart-oci-ta/testdata/product-chart
+          - name: CHART_VERSION
+            value: "0.2.0+preserve"
+          - name: APP_VERSION
+            value: "preserve-test"
+          - name: OVERWRITE_CHART_NAME
+            value: "false"
+          - name: VALUES_FILES
+            value:
+              - values.yaml
+        taskRef:
+          name: build-helm-chart-oci-ta
+          kind: Task
+      - name: verify-chart-push
+        runAfter:
+          - build-helm-chart-oci-ta
+        params:
+          - name: IMAGE_URL
+            value: $(tasks.build-helm-chart-oci-ta.results.IMAGE_URL)
+          - name: IMAGE_DIGEST
+            value: $(tasks.build-helm-chart-oci-ta.results.IMAGE_DIGEST)
+          - name: EXPECTED_IMAGE
+            value: $(params.output-image)
+          - name: EXPECTED_CHART_TITLE
+            value: build-helm-chart-oci-ta-v04
+          - name: EXPECTED_CHART_VERSION
+            value: "0.1.0+test"
+          - name: EXPECTED_MAPPED_IMAGE
+            value: quay.io/konflux-ci/tools:mapped-e2e
+        taskSpec:
+          params:
+            - name: IMAGE_URL
+              type: string
+            - name: IMAGE_DIGEST
+              type: string
+            - name: EXPECTED_IMAGE
+              type: string
+            - name: EXPECTED_CHART_TITLE
+              type: string
+            - name: EXPECTED_CHART_VERSION
+              type: string
+            - name: EXPECTED_MAPPED_IMAGE
+              type: string
+          steps:
+            - name: verify
+              image: quay.io/konflux-ci/release-service-utils@sha256:3cb03b14ac9d90ff27070036ce2b50712e65aa285daeb28852254a745bb25dfc
+              computeResources:
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+                requests:
+                  cpu: 100m
+                  memory: 64Mi
+              script: |
+                #!/bin/bash
+                set -ex
+
+                image_url="$(params.IMAGE_URL)"
+                image_digest="$(params.IMAGE_DIGEST)"
+                expected_image="$(params.EXPECTED_IMAGE)"
+                expected_title="$(params.EXPECTED_CHART_TITLE)"
+                expected_version="$(params.EXPECTED_CHART_VERSION)"
+                expected_mapped_image="$(params.EXPECTED_MAPPED_IMAGE)"
+
+                if [[ -z "$image_url" ]]; then
+                  echo "IMAGE_URL is empty"
+                  exit 1
+                fi
+
+                if [[ "$image_url" != *"build-helm-chart-oci-ta-v04:0.1.0_test"* ]]; then
+                  echo "unexpected IMAGE_URL: $image_url"
+                  exit 1
+                fi
+
+                if [[ -z "$image_digest" ]]; then
+                  echo "IMAGE_DIGEST is empty"
+                  exit 1
+                fi
+
+                raw="$(skopeo inspect --retry-times 3 --raw "docker://${image_url}")"
+                jq -e --arg title "$expected_title" --arg version "$expected_version" '
+                  .config.mediaType == "application/vnd.cncf.helm.config.v1+json" and
+                  .annotations["org.opencontainers.image.title"] == $title and
+                  .annotations["org.opencontainers.image.version"] == $version
+                ' <<< "$raw"
+
+                tagged_digest="$(
+                  skopeo inspect --retry-times 3 --raw "docker://${expected_image}" \
+                    | sha256sum | awk '{print "sha256:" $1}'
+                )"
+                if [[ "$tagged_digest" != "$image_digest" ]]; then
+                  echo "digest mismatch: pushed=${image_digest} tagged=${tagged_digest}"
+                  exit 1
+                fi
+
+                chart_dir="$(mktemp -d)"
+                skopeo copy --retry-times 3 "docker://${image_url}" "dir:${chart_dir}"
+                layer_digest="$(
+                  jq -r '.layers[] | select(.mediaType=="application/vnd.cncf.helm.chart.content.v1.tar+gzip") | .digest' <<< "$raw"
+                )"
+                layer_blob="${layer_digest#sha256:}"
+                # skopeo copy to dir: uses docker-schema layout (manifest.json + digest
+                # files at the root), not OCI blobs/sha256/ paths.
+                layer_path="${chart_dir}/${layer_blob}"
+                if [[ ! -f "$layer_path" ]]; then
+                  layer_path="${chart_dir}/blobs/sha256/${layer_blob}"
+                fi
+                if [[ ! -f "$layer_path" ]]; then
+                  echo "failed to locate chart layer blob ${layer_digest} after skopeo copy"
+                  find "${chart_dir}" -type f | sort
+                  exit 1
+                fi
+                values_yaml="$(tar -xOzf "$layer_path" '*/values.yaml')"
+                expected_repo="${expected_mapped_image%:*}"
+                expected_tag="${expected_mapped_image#*:}"
+                mapping_ok=true
+                if ! grep -F "repository: ${expected_repo}" <<< "$values_yaml"; then
+                  echo "IMAGE_MAPPINGS verification failed: packaged values.yaml missing repository ${expected_repo}"
+                  mapping_ok=false
+                fi
+                if ! grep -F "tag: ${expected_tag}" <<< "$values_yaml"; then
+                  echo "IMAGE_MAPPINGS verification failed: packaged values.yaml missing tag ${expected_tag}"
+                  mapping_ok=false
+                fi
+                if [[ "$mapping_ok" != true ]]; then
+                  echo "expected mapped image: ${expected_mapped_image}"
+                  echo "packaged values.yaml:"
+                  echo "$values_yaml"
+                  exit 1
+                fi
+
+                echo "Chart pushed at $image_url (digest: $image_digest)"
+                echo "Additional tag: $expected_image"
+                echo "IMAGE_MAPPINGS target present in chart: $expected_mapped_image"
+      - name: verify-chart-push-no-overwrite
+        runAfter:
+          - build-helm-chart-oci-ta-no-overwrite
+        params:
+          - name: IMAGE_URL
+            value: $(tasks.build-helm-chart-oci-ta-no-overwrite.results.IMAGE_URL)
+          - name: IMAGE_DIGEST
+            value: $(tasks.build-helm-chart-oci-ta-no-overwrite.results.IMAGE_DIGEST)
+          - name: EXPECTED_IMAGE
+            value: $(params.no-overwrite-output-image)
+          - name: EXPECTED_CHART_TITLE
+            value: build-helm-chart-oci-ta-v04
+          - name: EXPECTED_CHART_VERSION
+            value: "0.2.0+preserve"
+        taskSpec:
+          params:
+            - name: IMAGE_URL
+              type: string
+            - name: IMAGE_DIGEST
+              type: string
+            - name: EXPECTED_IMAGE
+              type: string
+            - name: EXPECTED_CHART_TITLE
+              type: string
+            - name: EXPECTED_CHART_VERSION
+              type: string
+          steps:
+            - name: verify
+              image: quay.io/konflux-ci/release-service-utils@sha256:3cb03b14ac9d90ff27070036ce2b50712e65aa285daeb28852254a745bb25dfc
+              computeResources:
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+                requests:
+                  cpu: 100m
+                  memory: 64Mi
+              script: |
+                #!/bin/bash
+                set -ex
+
+                image_url="$(params.IMAGE_URL)"
+                image_digest="$(params.IMAGE_DIGEST)"
+                expected_image="$(params.EXPECTED_IMAGE)"
+                expected_title="$(params.EXPECTED_CHART_TITLE)"
+                expected_version="$(params.EXPECTED_CHART_VERSION)"
+
+                if [[ -z "$image_url" ]]; then
+                  echo "IMAGE_URL is empty"
+                  exit 1
+                fi
+
+                if [[ "$image_url" != *"build-helm-chart-oci-ta-v04:0.2.0_preserve" ]]; then
+                  echo "unexpected IMAGE_URL: $image_url"
+                  exit 1
+                fi
+
+                if [[ -z "$image_digest" ]]; then
+                  echo "IMAGE_DIGEST is empty"
+                  exit 1
+                fi
+
+                raw="$(skopeo inspect --retry-times 3 --raw "docker://${image_url}")"
+                jq -e --arg title "$expected_title" --arg version "$expected_version" '
+                  .config.mediaType == "application/vnd.cncf.helm.config.v1+json" and
+                  .annotations["org.opencontainers.image.title"] == $title and
+                  .annotations["org.opencontainers.image.version"] == $version
+                ' <<< "$raw"
+
+                # Helm charts are OCI artifacts, not container images; skopeo
+                # --format Digest fails on them. Hash the manifest JSON instead.
+                tagged_digest="$(
+                  skopeo inspect --retry-times 3 --raw "docker://${expected_image}" \
+                    | sha256sum | awk '{print "sha256:" $1}'
+                )"
+                if [[ -n "$image_digest" && "$tagged_digest" != "$image_digest" ]]; then
+                  echo "digest mismatch: pushed=${image_digest} tagged=${tagged_digest}"
+                  exit 1
+                fi
+
+                echo "No-overwrite chart pushed at $image_url (title: $expected_title, version: $expected_version)"
+                echo "Additional tag: $expected_image"
+    workspaces:
+      - name: git-auth
+        optional: true
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-build-helm-chart-oci-ta-v04
+  workspaces:
+    - name: git-auth
+      secret:
+        secretName: '{{ git_auth_secret }}'

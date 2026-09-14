@@ -6,17 +6,20 @@ Tekton tasks and pipeline used by AppStudio.
 ## Installation
 
 Requires a cluster with the Tekton Task CRD and `kubectl`. Apply the actively
-maintained task:
+maintained tasks:
 
 ```bash
 kubectl apply -f tasks/rpms-signature-scan/0.2/rpms-signature-scan.yaml -n <namespace>
+kubectl apply -f tasks/build-helm-chart-oci-ta/0.4/build-helm-chart-oci-ta.yaml -n <namespace>
 ```
 
 ## Usage
 
 Task parameters and results are documented in each version directory's `README.md`
-(for example [`tasks/rpms-signature-scan/0.2/README.md`](tasks/rpms-signature-scan/0.2/README.md)).
-How CI runs the task against sample images: [AGENTS.md](AGENTS.md) (CI / Testing) and `.tekton/rpms-signature-scan-tests-pull-request.yaml`.
+(for example [`tasks/rpms-signature-scan/0.2/README.md`](tasks/rpms-signature-scan/0.2/README.md)
+and [`tasks/build-helm-chart-oci-ta/0.4/README.md`](tasks/build-helm-chart-oci-ta/0.4/README.md)).
+How CI runs tasks against sample images: [AGENTS.md](AGENTS.md) (CI / Testing) and
+the `.tekton/*-tests-pull-request.yaml` pipelines.
 
 ## Kerberos keytab
 

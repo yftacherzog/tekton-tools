@@ -1,0 +1,4 @@
+replicaCount: 1
+image:
+  repository: localhost/test-chart
+  tag: old
